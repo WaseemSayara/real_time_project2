@@ -20,13 +20,16 @@ int main(int argc, char *argv[])
     mid = msgget(key,IPC_CREAT | 0660);
     }
 
-    if (SEED == 'A') {
-    if (msgrcv(mid, &msg,MSGSZ,1, 0) == -1 ) {
-      perror("Client: msgsend");
-      return 4;
-    }
-        printf("From officer : %s \n", msg.mtext);
-    }
+    // if (SEED == 'A') {
+    //     for (int j=0; j<2; j++){
+    // if (msgrcv(mid, &msg,MSGSZ,1, 0) == -1 ) {
+    //   perror("Client: msgsend");
+    //   return 4;
+    // }
+    //     printf("%d From officer : %s \n",j, msg.mtext);
+    // }
+    // }
+
 
 
     return 0;

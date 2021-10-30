@@ -1,8 +1,7 @@
 
 #include "local.h"
 
-
-void signal_quit_catcher(int );
+void signal_quit_catcher(int);
 
 int main(int argc, char *argv[])
 {
@@ -12,7 +11,7 @@ int main(int argc, char *argv[])
     char tmp[20];
     char seed = 'A';
     char *seed_p;
-    FILE *variables; 
+    FILE *variables;
 
     // if (sigset(SIGSTOP, signal_quit_catcher) == SIGSTOP)
     // {
@@ -69,33 +68,6 @@ int main(int argc, char *argv[])
     for (i = 0; i < num_of_officers; i++, seed++)
     {
         pid = fork(); //store forked proceee pid in pid variable
-                      // Failed fork process        
-        if (pid == -1)
-        {
-            perror("failed to fork officer");
-            exit(2);
-        }
-        // The process is a child
-        else if (pid == 0)
-        {
-            // Assign Referee process
-            int status = execl("./officer",&seed, (char *)0);
-
-            if (status == -1)
-            {
-                perror("Faild to execute ./officer!");
-                exit(3);
-            }
-        }
-        else
-        {
-            officer_array[i] = pid;
-            sleep(1);
-        }
-    }
-    sleep(1);
-
-    pid = fork(); //store forked proceee pid in pid variable
                       // Failed fork process
         if (pid == -1)
         {
@@ -106,43 +78,87 @@ int main(int argc, char *argv[])
         else if (pid == 0)
         {
             // Assign Referee process
-
-            int status = execl("./hall", (char *)0);
+            int status = execl("./officer", &seed, (char *)0);
 
             if (status == -1)
             {
-                perror("Faild to execute ./hall!");
+                perror("Faild to execute ./officer!");
                 exit(3);
             }
         }
         else
         {
-            hall = pid;
+            officer_array[i] = pid;
         }
+    }
+    sleep(1);
 
-        sleep(1);
+    pid = fork(); //store forked proceee pid in pid variable
+                  // Failed fork process
+    if (pid == -1)
+    {
+        perror("failed to fork officer");
+        exit(2);
+    }
+    // The process is a child
+    else if (pid == 0)
+    {
+        // Assign Referee process
 
-        pid = fork();
+        int status = execl("./hall", (char *)0);
 
-        if (pid == -1)
+        if (status == -1)
         {
-            perror("failed to fork passenger");
-            exit(2);
+            perror("Faild to execute ./hall!");
+            exit(3);
         }
-        // The process is a child
-        else if (pid == 0)
+    }
+    else
+    {
+        hall = pid;
+    }
+
+    sleep(1);
+
+    srand(getpid());
+
+    int k=0;
+    while (k <10)
+    {
+        int sleep_count, passengers_count;
+
+        sleep_count = (rand() % 5) + 1;
+        passengers_count = (rand() % 6) + 1;
+
+        for (i = 0; i < passengers_count; i++)
         {
-            // Assign Referee process
 
-            int status = execl("./passenger", (char *)0);
+            pid = fork();
 
-            if (status == -1)
+            if (pid == -1)
             {
-                perror("Faild to execute ./passenger!");
-                exit(3);
+                perror("failed to fork passenger");
+                exit(2);
             }
-        }
+            // The process is a child
+            else if (pid == 0)
+            {
+                // Assign Referee process
+                char *str_officers_count;
+                sprintf(str_officers_count, "%d", num_of_officers);
 
+                int status = execl("./passenger", str_officers_count, (char *)0);
+
+                if (status == -1)
+                {
+                    perror("Faild to execute ./passenger!");
+                    exit(3);
+                }
+            }
+        sleep(sleep_count);
+        }
+        k++;
+    }
 
     // for (i = 0; i < 3; i++)
     // {

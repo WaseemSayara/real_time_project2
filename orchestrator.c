@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     char tmp[20];
     char seed = 'A';
     char *seed_p;
-    FILE *variables;
+    FILE *variables; 
 
     // if (sigset(SIGSTOP, signal_quit_catcher) == SIGSTOP)
     // {

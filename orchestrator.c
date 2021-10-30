@@ -1,8 +1,8 @@
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
+#include "local.h"
+
+
+void signal_quit_catcher(int );
 
 int main(int argc, char *argv[])
 {
@@ -10,13 +10,26 @@ int main(int argc, char *argv[])
     pid_t pid, hall, pid_array[3];
     static char message[BUFSIZ];
     char tmp[20];
-
+    char seed = 'A';
+    char *seed_p;
     FILE *variables;
+
+    // if (sigset(SIGSTOP, signal_quit_catcher) == SIGSTOP)
+    // {
+    //     perror("Sigset can not set SIGINT");
+    //     exit(SIGSTOP);
+    // }
+    // if (sigset(SIGINT, signal_quit_catcher) == SIGINT)
+    // {
+    //     perror("Sigset can not set SIGINT");
+    //     exit(SIGINT);
+    // }
 
     variables = fopen("variables.txt", "r");
 
     fscanf(variables, "%s %d\n", &tmp, &num_of_busses);
     fscanf(variables, "%s %d\n", &tmp, &num_of_officers);
+    fclose(variables);
 
     printf("%d  %d\n", num_of_busses, num_of_officers);
 
@@ -53,10 +66,10 @@ int main(int argc, char *argv[])
     }
     sleep(1);
 
-    for (i = 0; i < num_of_officers; i++)
+    for (i = 0; i < num_of_officers; i++, seed++)
     {
         pid = fork(); //store forked proceee pid in pid variable
-                      // Failed fork process
+                      // Failed fork process        
         if (pid == -1)
         {
             perror("failed to fork officer");
@@ -66,8 +79,7 @@ int main(int argc, char *argv[])
         else if (pid == 0)
         {
             // Assign Referee process
-
-            int status = execl("./officer", (char *)0);
+            int status = execl("./officer",&seed, (char *)0);
 
             if (status == -1)
             {
@@ -78,6 +90,7 @@ int main(int argc, char *argv[])
         else
         {
             officer_array[i] = pid;
+            sleep(1);
         }
     }
     sleep(1);
@@ -108,6 +121,28 @@ int main(int argc, char *argv[])
         }
 
         sleep(1);
+
+        pid = fork();
+
+        if (pid == -1)
+        {
+            perror("failed to fork passenger");
+            exit(2);
+        }
+        // The process is a child
+        else if (pid == 0)
+        {
+            // Assign Referee process
+
+            int status = execl("./passenger", (char *)0);
+
+            if (status == -1)
+            {
+                perror("Faild to execute ./passenger!");
+                exit(3);
+            }
+        }
+
 
     // for (i = 0; i < 3; i++)
     // {
@@ -165,4 +200,10 @@ int main(int argc, char *argv[])
     // }
 
     return 0;
+}
+
+void signal_quit_catcher(int the_sig)
+{
+
+    exit(1);
 }

@@ -17,7 +17,7 @@
 #include <signal.h>
 
 #define SERVER 1L /* message for the server */
-#define MSGSZ 10
+#define MSGSZ 12
 #define ARAB_PERCENTS 0.7
 
 typedef struct msgbuf {

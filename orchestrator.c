@@ -122,8 +122,8 @@ int main(int argc, char *argv[])
 
     srand(getpid());
 
-    int k=0;
-    while (k <10)
+    int k = 0;
+    while (k < 4)
     {
         int sleep_count, passengers_count;
 
@@ -144,7 +144,8 @@ int main(int argc, char *argv[])
             else if (pid == 0)
             {
                 // Assign Referee process
-                char *str_officers_count;
+
+                char str_officers_count[4];
                 sprintf(str_officers_count, "%d", num_of_officers);
 
                 int status = execl("./passenger", str_officers_count, (char *)0);
@@ -155,8 +156,8 @@ int main(int argc, char *argv[])
                     exit(3);
                 }
             }
-        sleep(sleep_count);
         }
+        sleep(sleep_count);
         k++;
     }
 

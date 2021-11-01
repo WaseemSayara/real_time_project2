@@ -1,6 +1,7 @@
 
 #include "local.h"
 
+void signal_alarm_catcher(int the_sig);
 
 int main(int argc, char *argv[])
 {
@@ -8,6 +9,17 @@ int main(int argc, char *argv[])
     char SEED = *argv[0];
     long mid;
     MESSAGE msg;
+    int process_passport, passenger_pid;
+    char recieved_msg[10], valid_passport[2];
+
+    srand(getpid());
+
+    if (sigset(SIGALRM, signal_alarm_catcher) == SIGALRM)
+    {
+        perror("Sigset can not set SIGINT");
+        exit(SIGSTOP);
+    }
+    alarm(30);
 
     printf("the officer id is: %d, with seed = %c \n", getpid(), SEED);
     if ((key = ftok(".", SEED)) == -1)
@@ -16,21 +28,53 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if ((mid = msgget(key, 0 )) == -1 ) {        
-    mid = msgget(key,IPC_CREAT | 0660);
+    if ((mid = msgget(key, 0)) == -1)
+    {
+        mid = msgget(key, IPC_CREAT | 0660);
+    }
+    while (1)
+    {
+        if (msgrcv(mid, &msg, MSGSZ, 1, 0) == -1)
+        {
+            perror("Client: msgsend");
+            return 4;
+        }
+        printf("From officer with seed = %c : %s \n", SEED, msg.mtext);
+
+        process_passport = (rand() % 3) + 3; // 3-5
+        strcpy(recieved_msg, msg.mtext);
+
+        char *token = strtok(recieved_msg, "-");
+        passenger_pid = atoi(token);
+        token = strtok(NULL, "-");
+        strcpy(valid_passport, token);
+
+        // inform passenger he reached the officer
+        if (kill(passenger_pid, SIGUSR1) != -1) // check if passenger is still alive
+        {
+            if (strcmp(valid_passport, "T") == 0)
+            {
+                sleep(process_passport);
+                printf("send passenger (%d) to hall\n", passenger_pid);
+                
+                // check if the hall is not full
+                // if the hall is open
+                    // send passenger to hall using its queue
+                // else wait until hall is open
+
+            }
+            else
+            {
+                sleep((int)(process_passport / 2));
+                int r = kill(passenger_pid, SIGTERM);
+            }
+        }
     }
 
-    // if (SEED == 'A') {
-    //     for (int j=0; j<2; j++){
-    // if (msgrcv(mid, &msg,MSGSZ,1, 0) == -1 ) {
-    //   perror("Client: msgsend");
-    //   return 4;
-    // }
-    //     printf("%d From officer : %s \n",j, msg.mtext);
-    // }
-    // }
-
-
-
     return 0;
+}
+
+void signal_alarm_catcher(int the_sig)
+{
+    exit(1);
 }

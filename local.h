@@ -15,14 +15,26 @@
 #include <ctype.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <sys/shm.h>
 
-#define SERVER 1L /* message for the server */
+#define ACCESS_GRANTED 1
+#define ACCESS_DENIED 2
+#define IMPATIENT 3
+
 #define MSGSZ 12
 #define ARAB_PERCENTS 0.7
+#define HALL_SEED '$'
+#define HALL_MESSAGE_TYPE 2
+#define HALL_MESSAGE_SIZE 10
+
 
 typedef struct msgbuf {
 	long mtype;
 	char mtext[MSGSZ];
 } MESSAGE;
+
 
 #endif

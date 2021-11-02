@@ -5,13 +5,15 @@ void signal_quit_catcher(int);
 
 int main(int argc, char *argv[])
 {
-    int i, status, num_of_busses, num_of_officers;
+    int i, status, num_of_busses, num_of_officers, hall_max_count, hall_min_count;
+    int shmid_1, shmid_2, shmid_3;
+
     pid_t pid, hall, pid_array[3];
-    static char message[BUFSIZ];
     char tmp[20];
     char seed = 'A';
-    char *seed_p;
+    char *shmptr1, *shmptr2, *shmptr3, *tmp_char;
     FILE *variables;
+    key_t key;
 
     // if (sigset(SIGSTOP, signal_quit_catcher) == SIGSTOP)
     // {
@@ -24,10 +26,108 @@ int main(int argc, char *argv[])
     //     exit(SIGINT);
     // }
 
+    if ((key = ftok(".", ACCESS_GRANTED)) == -1)
+    {
+        perror("Client: key generation");
+        return 1;
+    }
+
+    if ((shmid_1 = shmget(key, 10, IPC_CREAT | 0666)) != -1)
+    {
+
+        if ((shmptr1 = (char *)shmat(shmid_1, 0, 0)) == (char *)-1)
+        {
+            perror("shmptr -- parent -- attach");
+            exit(1);
+        }
+
+        tmp_char = shmptr1;
+
+        *tmp_char++ = '0';
+
+        *tmp_char = NULL;
+    }
+    else
+    {
+        perror("shmid1 -- parent -- creation");
+        exit(2);
+    }
+
+    shmdt(shmid_1);
+
+    // -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+
+    if ((key = ftok(".", ACCESS_DENIED)) == -1)
+    {
+        perror("Client: key generation");
+        return 1;
+    }
+
+    if ((shmid_2 = shmget(key, 10, IPC_CREAT | 0666)) != -1)
+    {
+
+        if ((shmptr2 = (char *)shmat(shmid_2, 0, 0)) == (char *)-1)
+        {
+            perror("shmptr2 -- parent -- attach");
+            exit(1);
+        }
+
+        tmp_char = shmptr2;
+
+        *tmp_char++ = '0';
+
+        *tmp_char = NULL;
+    }
+    else
+    {
+        perror("shmid2 -- parent -- creation");
+        exit(2);
+    }
+
+    shmdt(shmid_2);
+
+    // -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+
+    if ((key = ftok(".", IMPATIENT)) == -1)
+    {
+        perror("Client: key generation");
+        return 1;
+    }
+
+    if ((shmid_3 = shmget(key, 10, IPC_CREAT | 0666)) != -1)
+    {
+
+        if ((shmptr3 = (char *)shmat(shmid_3, 0, 0)) == (char *)-1)
+        {
+            perror("shmptr3 -- parent -- attach");
+            exit(1);
+        }
+
+        tmp_char = shmptr3;
+
+        *tmp_char++ = '0';
+
+        *tmp_char = NULL;
+    }
+    else
+    {
+        perror("shmid3 -- parent -- creation");
+        exit(2);
+    }
+
+    shmdt(shmid_3);
+
+    // -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+
     variables = fopen("variables.txt", "r");
 
     fscanf(variables, "%s %d\n", &tmp, &num_of_busses);
     fscanf(variables, "%s %d\n", &tmp, &num_of_officers);
+    fscanf(variables, "%s %d\n", &tmp, &hall_max_count);
+    fscanf(variables, "%s %d\n", &tmp, &hall_min_count);
     fclose(variables);
 
     printf("%d  %d\n", num_of_busses, num_of_officers);
@@ -97,7 +197,7 @@ int main(int argc, char *argv[])
                   // Failed fork process
     if (pid == -1)
     {
-        perror("failed to fork officer");
+        perror("failed to fork hall");
         exit(2);
     }
     // The process is a child
@@ -105,7 +205,12 @@ int main(int argc, char *argv[])
     {
         // Assign Referee process
 
-        int status = execl("./hall", (char *)0);
+        char str_max[5], str_min[5];
+
+        sprintf(str_max, "%d", hall_max_count);
+        sprintf(str_min, "%d", hall_min_count);
+
+        int status = execl("./hall", str_max, str_min, (char *)0);
 
         if (status == -1)
         {

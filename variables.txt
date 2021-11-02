@@ -1,2 +1,4 @@
 Num_Of_Buses 5
 Num_Of_Officers 10
+Hall_Max_Count 100
+Hall_Min_Count 70

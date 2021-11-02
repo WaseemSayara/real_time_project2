@@ -5,9 +5,9 @@ void signal_alarm_catcher(int the_sig);
 
 int main(int argc, char *argv[])
 {
-    key_t key;
+    key_t key, hall_key;
     char SEED = *argv[0];
-    long mid;
+    long mid, hall_mid;
     MESSAGE msg;
     int process_passport, passenger_pid;
     char recieved_msg[10], valid_passport[2];
@@ -21,6 +21,8 @@ int main(int argc, char *argv[])
     }
     alarm(30);
 
+    sleep(1);
+
     printf("the officer id is: %d, with seed = %c \n", getpid(), SEED);
     if ((key = ftok(".", SEED)) == -1)
     {
@@ -32,6 +34,18 @@ int main(int argc, char *argv[])
     {
         mid = msgget(key, IPC_CREAT | 0660);
     }
+
+    if ((hall_key = ftok(".", HALL_SEED)) == -1)
+    {
+        perror("Client: key generation");
+        return 1;
+    }
+
+    if ((hall_mid = msgget(hall_key, 0)) == -1)
+    {
+        hall_mid = msgget(hall_key, IPC_CREAT | 0660);
+    }
+
     while (1)
     {
         if (msgrcv(mid, &msg, MSGSZ, 1, 0) == -1)
@@ -55,12 +69,21 @@ int main(int argc, char *argv[])
             if (strcmp(valid_passport, "T") == 0)
             {
                 sleep(process_passport);
+
+                MESSAGE msg_to_hall;
+                msg_to_hall.mtype = HALL_MESSAGE_TYPE;
+                char str_passenger_pid[12];
+                sprintf(str_passenger_pid, "%d", passenger_pid);
+                strcpy(msg_to_hall.mtext, str_passenger_pid);
+
+                if (msgsnd(hall_mid, &msg_to_hall, HALL_MESSAGE_SIZE, 0) == -1)
+                {
+                    perror("Client: msgsend");
+                    return 4;
+                }
+
                 printf("send passenger (%d) to hall\n", passenger_pid);
-                
-                // check if the hall is not full
-                // if the hall is open
-                    // send passenger to hall using its queue
-                // else wait until hall is open
+                fflush(stdout);
 
             }
             else

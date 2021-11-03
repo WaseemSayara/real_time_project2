@@ -5,15 +5,15 @@ void signal_quit_catcher(int);
 
 int main(int argc, char *argv[])
 {
-    int i, status, num_of_busses, num_of_officers, hall_max_count, hall_min_count;
-    int shmid_1, shmid_2, shmid_3;
+    int i, status, num_of_busses, capacity_of_bus, num_of_officers, hall_max_count, hall_min_count, sem_value;
+    long shmid_1, shmid_2, shmid_3, sem_array_id;
 
     pid_t pid, hall, pid_array[3];
     char tmp[20];
     char seed = 'A';
     char *shmptr1, *shmptr2, *shmptr3, *tmp_char;
     FILE *variables;
-    key_t key;
+    key_t key, sem_array_key;
 
     // if (sigset(SIGSTOP, signal_quit_catcher) == SIGSTOP)
     // {
@@ -26,7 +26,87 @@ int main(int argc, char *argv[])
     //     exit(SIGINT);
     // }
 
-    if ((key = ftok(".", ACCESS_GRANTED)) == -1)
+    variables = fopen("variables.txt", "r");
+
+    fscanf(variables, "%s %d\n", &tmp, &num_of_busses);
+    fscanf(variables, "%s %d\n", &tmp, &capacity_of_bus);
+    fscanf(variables, "%s %d\n", &tmp, &num_of_officers);
+    fscanf(variables, "%s %d\n", &tmp, &hall_max_count);
+    fscanf(variables, "%s %d\n", &tmp, &hall_min_count);
+    fclose(variables);
+
+    sem_array_key = ftok(".", SEM_ARRAY_SEED);
+    printf(" ------ %d\n", sem_array_key);
+
+    /*
+* Create the semaphore
+*/
+    if ((sem_array_id = semget(sem_array_key, num_of_busses, IPC_CREAT | 0660)) == -1)
+    {
+        perror("semget: IPC_CREAT | 0660");
+        exit(1);
+    }
+
+    printf("Semaphore identifier %d\n", sem_array_id);
+
+    // Initailize semaphore cell values
+
+    struct semid_ds sem_buf;
+    ushort sem_array[num_of_busses];
+    union semun arg;
+
+    for (int i = 0; i < num_of_busses; i++)
+    {
+        sem_array[i] = capacity_of_bus;
+    }
+
+    /*
+* Set arg (the union) to the addr of the storage location
+* for returned semid_ds values.
+*/
+    arg.buf = &sem_buf;
+
+    /*
+* Set arg (the union) to the addr of the initializing
+* vector.
+*/
+
+    //Initalize semaphore
+    arg.array = sem_array;
+    if (semctl(sem_array_id, 0, SETALL, arg) == -1)
+    {
+        perror("semctl: SETALL");
+        exit(3);
+    }
+
+    for (i = 0; i < num_of_busses; i++)
+    { /* display contents */
+        if ((sem_value = semctl(sem_array_id, i, GETVAL, 0)) == -1)
+        {
+            perror("semctl: GETVAL");
+            exit(4);
+        }
+
+        printf("Semaphore %d has value of %d\n", i, sem_value);
+    }
+
+    // Remove Semaphore
+
+    if (semctl(sem_array_id, 0, IPC_RMID, 0) == -1)
+    {
+        perror("semctl: IPC_RMID"); /* remove semaphore */
+        exit(5);
+    }
+
+    // -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+
+    
+
+    // -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+
+    if ((key = ftok(".", ACCESS_GRANTED_SEED)) == -1)
     {
         perror("Client: key generation");
         return 1;
@@ -58,7 +138,7 @@ int main(int argc, char *argv[])
     // -----------------------------------------------------------------------------
     // -----------------------------------------------------------------------------
 
-    if ((key = ftok(".", ACCESS_DENIED)) == -1)
+    if ((key = ftok(".", ACCESS_DENIED_SEED)) == -1)
     {
         perror("Client: key generation");
         return 1;
@@ -90,7 +170,7 @@ int main(int argc, char *argv[])
     // -----------------------------------------------------------------------------
     // -----------------------------------------------------------------------------
 
-    if ((key = ftok(".", IMPATIENT)) == -1)
+    if ((key = ftok(".", IMPATIENT_SEED)) == -1)
     {
         perror("Client: key generation");
         return 1;
@@ -121,14 +201,6 @@ int main(int argc, char *argv[])
 
     // -----------------------------------------------------------------------------
     // -----------------------------------------------------------------------------
-
-    variables = fopen("variables.txt", "r");
-
-    fscanf(variables, "%s %d\n", &tmp, &num_of_busses);
-    fscanf(variables, "%s %d\n", &tmp, &num_of_officers);
-    fscanf(variables, "%s %d\n", &tmp, &hall_max_count);
-    fscanf(variables, "%s %d\n", &tmp, &hall_min_count);
-    fclose(variables);
 
     printf("%d  %d\n", num_of_busses, num_of_officers);
 

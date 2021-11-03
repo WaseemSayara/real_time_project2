@@ -72,6 +72,7 @@ int deQueue(struct Queue *q)
 }
 
 void signal_alarm_catcher(int);
+void increment_shared_memory(long);
 int hall_count = 0;
 
 int main(int argc, char *argv[])
@@ -79,10 +80,11 @@ int main(int argc, char *argv[])
     key_t key;
     long mid;
     struct msqid_ds buf;
-    MESSAGE recieved_msg;
-    int max_limit, min_limit;
-    int shmid_1, shmid_2, shmid_3;
-    char *shmptr1, *shmptr2, *shmptr3;
+    MESSAGE recieved_msg, to_bus_msg;
+    int max_limit, min_limit, num_of_busses;
+    long shmid_1, shmid_2, shmid_3, bus_sem_array_id;
+    FILE *variables;
+    char str_passenger_id[10], tmp[20];
 
     max_limit = atoi(argv[0]);
     min_limit = atoi(argv[1]);
@@ -95,7 +97,7 @@ int main(int argc, char *argv[])
         exit(SIGALRM);
     }
 
-    if ((key = ftok(".", ACCESS_GRANTED)) == -1)
+    if ((key = ftok(".", ACCESS_GRANTED_SEED)) == -1)
     {
         perror("Client: key generation");
         return 1;
@@ -103,14 +105,7 @@ int main(int argc, char *argv[])
 
     if ((shmid_1 = shmget(key, 10, IPC_CREAT | 0666)) != -1)
     {
-
-        if ((shmptr1 = (char *)shmat(shmid_1, 0, 0)) == (char *)-1)
-        {
-            perror("shmptr -- parent -- attach");
-            exit(1);
-        }
-        printf("------------------------ (%s) ---------------------\n", shmptr1);
-        
+        printf("------------------------ ( shem connected ) ---------------------\n");
     }
     else
     {
@@ -118,7 +113,7 @@ int main(int argc, char *argv[])
         exit(2);
     }
 
-    alarm(60);
+    alarm(80);
 
     struct Queue *passengers = createQueue();
 
@@ -138,6 +133,30 @@ int main(int argc, char *argv[])
     buf.msg_qbytes = 12;
     msgctl(mid, IPC_SET, &buf);
 
+    variables = fopen("variables.txt", "r");
+    fscanf(variables, "%s %d\n", &tmp, &num_of_busses);
+    fclose(variables);
+
+    if ((key = ftok(".", SEM_ARRAY_SEED)) == -1)
+    {
+        perror("Client: key generation");
+        return 1;
+    }
+
+    if ((bus_sem_array_id = semget(key, num_of_busses, 0)) != -1)
+    {
+        printf("------------------------ ( shem connected ) ---------------------\n");
+    }
+    else
+    {
+        perror("shmid1 -- parent -- creation");
+        exit(2);
+    }
+
+    int current_bus = 0;
+    int current_value;
+    int passenger_id;
+
     while (1)
     {
         if (hall_count < max_limit)
@@ -156,10 +175,63 @@ int main(int argc, char *argv[])
             hall_count++;
             printf("the current count in the hall is --( %d )--\n", hall_count);
             fflush(stdout);
+            increment_shared_memory(shmid_1);
+
+            // check bus semaphores
+            if ((current_value = semctl(bus_sem_array_id, current_bus, GETVAL, 0)) == -1)
+            {
+                perror("semctl: GETVAL");
+                exit(4);
+            }
+            while (current_value >= 0)
+            {
+                if (hall_count == 0)
+                    break;
+
+                passenger_id = deQueue(passengers);
+                sprintf(str_passenger_id, "%d", passenger_id);
+
+                to_bus_msg.mtype = BUS_MESSAGE_TYPE;
+                strcpy(to_bus_msg.mtext, str_passenger_id);
+
+                // send id to bus queue
+
+                hall_count--;
+                current_value--;
+            }
+
+            if (semctl(bus_sem_array_id, current_bus, SETVAL, current_value) == -1)
+            {
+                perror("SETVAL error");
+            }
+
+            // if there is no space left in the bus -> go to next bus
+            if (current_value == 0)
+            {
+                current_bus = (current_bus + 1) % num_of_busses;
+            }
         }
     }
 
     return 0;
+}
+
+void increment_shared_memory(long shmid)
+{
+    char *shmptr;
+    int tmp;
+
+    if ((shmptr = (char *)shmat(shmid, 0, 0)) == (char *)-1)
+    {
+        perror("shmptr -- parent -- attach");
+        exit(1);
+    }
+    printf(" mem was : ------------------------ (%s) ---------------------\n", shmptr);
+    tmp = atoi(shmptr);
+    tmp++;
+    sprintf(shmptr, "%d", tmp);
+    printf(" mem is now : ------------------------ (%s) ---------------------\n", shmptr);
+    shmdt(shmid);
 }
 
 void signal_alarm_catcher(int the_sig)

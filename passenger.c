@@ -10,12 +10,15 @@ int main(int argc, char *argv[])
 {
     key_t key;
     char SEED;
-    int nationality;
-    int officers, arab_officers;
+    int nationality, officers, arab_officers, random_alarm;
     long mid;
     MESSAGE msg;
 
     srand(getpid());
+
+    /*
+    * Signal Catchers
+    */
 
     if (sigset(SIGALRM, signal_alarm_catcher) == SIGALRM)
     {
@@ -35,7 +38,9 @@ int main(int argc, char *argv[])
         exit(SIGTERM);
     }
 
-    alarm(30);
+    // Random alarm value
+    random_alarm = (rand() % 15) + 15; // from 15 to 30 secounds
+    alarm(random_alarm);
 
     int tmp = (rand() % 100);
     if (tmp <= 70)
@@ -73,8 +78,7 @@ int main(int argc, char *argv[])
     msg = create_message();
 
     printf("From passenger : %s , with seed = %c \n", msg.mtext, SEED);
-
-    // sleep(1);
+     fflush(stdout);
 
     int buf_length = strlen(msg.mtext) + 1;
 

@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     char SEED = *argv[0];
     long mid, hall_mid;
     MESSAGE msg;
-    int process_passport, passenger_pid;
+    int process_passport, passenger_pid, random_alarm;
     char recieved_msg[10], valid_passport[2];
 
     srand(getpid());
@@ -19,11 +19,15 @@ int main(int argc, char *argv[])
         perror("Sigset can not set SIGINT");
         exit(SIGSTOP);
     }
-    alarm(30);
+
+    // Random alarm value
+    random_alarm = (rand() % 15) + 15; // from 15 to 30 secounds
+    alarm(random_alarm);
 
     sleep(1);
 
     printf("the officer id is: %d, with seed = %c \n", getpid(), SEED);
+     fflush(stdout);
     if ((key = ftok(".", SEED)) == -1)
     {
         perror("Client: key generation");
@@ -54,6 +58,7 @@ int main(int argc, char *argv[])
             return 4;
         }
         printf("From officer with seed = %c : %s \n", SEED, msg.mtext);
+         fflush(stdout);
 
         process_passport = (rand() % 3) + 3; // 3-5
         strcpy(recieved_msg, msg.mtext);
@@ -84,7 +89,6 @@ int main(int argc, char *argv[])
 
                 printf("send passenger (%d) to hall\n", passenger_pid);
                 fflush(stdout);
-
             }
             else
             {

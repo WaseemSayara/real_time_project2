@@ -42,9 +42,6 @@ int main(int argc, char *argv[])
     alarm(random_alarm);
     sleep(1);
 
-    printf("the officer id is: %d, with seed = %c \n", getpid(), SEED);
-    fflush(stdout);
-
     // Create V key used to create message queue
     if ((key = ftok(".", SEED)) == -1)
     {
@@ -81,10 +78,6 @@ int main(int argc, char *argv[])
             }
             else
             {
-
-                printf("From officer with seed = %c : %s \n", SEED, msg.mtext);
-                fflush(stdout);
-
                 // Random process length between 3 and 5
                 passport_stamp = (rand() % 3) + 3;
                 strcpy(recieved_msg, msg.mtext);
@@ -127,28 +120,25 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        else if (end_flag == 1)
-        {
-            printf("officer entered end place\n");
-            fflush(stdout);
-            while (1)
-            {
-                if (msgrcv(mid, &msg, MSGSZ, 1, IPC_NOWAIT) == -1)
-                {
-                    int x;
-                    x = msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
-                    printf("delete msg queue retuerned with %d\n", x);
-                    return 0;
-                }
-                else
-                {
-                    strcpy(recieved_msg, msg.mtext);
-                    char *token = strtok(recieved_msg, "-");
-                    passenger_pid = atoi(token);
-                    kill(passenger_pid, SIGKILL);
-                }
-            }
-        }
+        // else if (end_flag == 1)
+        // {
+        //     while (1)
+        //     {
+        //         if (msgrcv(mid, &msg, MSGSZ, 1, IPC_NOWAIT) == -1)
+        //         {
+        //             int x;
+        //             x = msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
+        //             return 0;
+        //         }
+        //         else
+        //         {
+        //             strcpy(recieved_msg, msg.mtext);
+        //             char *token = strtok(recieved_msg, "-");
+        //             passenger_pid = atoi(token);
+        //             kill(passenger_pid, SIGKILL);
+        //         }
+        //     }
+        // }
     }
 
     return 0;
@@ -160,16 +150,13 @@ void cleanup()
     char recieved_msg[20];
     int passenger_pid;
 
-    printf("officer entered end place\n");
-    fflush(stdout);
     while (1)
     {
         if (msgrcv(mid, &msg, MSGSZ, 1, IPC_NOWAIT) == -1)
         {
             int x;
             x = msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
-            printf("delete msg queue retuerned with %d\n", x);
-            return 0;
+            exit (0);
         }
         else
         {
@@ -193,9 +180,9 @@ void access_denied()
     key_t key;
 
     key = ftok(".", SEM_ACCESS_DENIED_SEED);
-    if ((semid = semget(key, 1, IPC_EXCL | 0660)) != -1)
+    if ((semid = semget(key, 1, IPC_EXCL | 0660)) == -1)
     {
-        printf(" acceess granted connected\n");
+        printf("cant connect to sem ");
     }
 
     if (semop(semid, &acquire, 1) == -1)
@@ -225,7 +212,7 @@ void access_denied()
         tmp = atoi(shmptr);
         tmp++;
         sprintf(shmptr, "%d", tmp);
-        printf(" access denied is: ------------------------ (%s) ---------------------\n", shmptr);
+        printf(" access denied count is: ------------------------ (%s) ---------------------\n", shmptr);
         shmdt(shmid);
     }
     else
@@ -239,9 +226,6 @@ void access_denied()
         exit(5);
     }
 
-    printf(" den tmp =============================== %d \n\n", tmp);
-    printf(" den value =============================== %d \n\n", access_denied_count);
-    fflush(stdout);
     if (tmp == access_denied_count)
     {
         int parent = getppid();

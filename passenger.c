@@ -44,8 +44,8 @@ int main(int argc, char *argv[])
         exit(SIGTERM);
     }
 
-    // Random alarm value (15-30 Seconds)
-    random_alarm = (rand() % 15) + 100;
+    // Random alarm value (30-45 Seconds)
+    random_alarm = (rand() % 15) + 30;
     alarm(random_alarm);
 
     // Random Nationality with user-defined Percentage
@@ -86,10 +86,7 @@ int main(int argc, char *argv[])
 
     msg.mtype = 1;
 
-    msg = create_message();
-
-    printf("From passenger : %s , with seed = %c \n", msg.mtext, SEED);
-    fflush(stdout);
+    msg = create_message(nationality);
 
     int buf_length = strlen(msg.mtext) + 1;
 
@@ -101,16 +98,15 @@ int main(int argc, char *argv[])
 
     while (1)
     {
+        // to keep the passenger alive until he reaches the borders
         pause();
-        printf("Passenger with id = %d , got signal\n", getpid());
-        fflush(stdout);
     }
 
     return 0;
 }
 
 // Function to create message with text "PID-(T/F)" and type 1
-MESSAGE create_message()
+MESSAGE create_message(int nat)
 {
 
     char valid_passport[2];
@@ -118,13 +114,34 @@ MESSAGE create_message()
     char message[12];
     srand(getpid());
     MESSAGE tmp_msg;
+    char nataonality[10];
+    char passport[10];
+
+    if (nat == 0)
+    {
+        strcpy(nataonality, "Arab");
+    }
+    else
+    {
+        strcpy(nataonality, "Foreign");
+    }
 
     // Random Valid Passport value with Validity Percentage %90
     int tmp = (rand() % 100);
     if (tmp <= 90)
+    {
         strcpy(valid_passport, "T");
+        strcpy(passport, "Valid");
+        printf("Passenger with pid = %d, is %s, and his passport is %s\n", getpid(), nataonality, passport);
+        fflush(stdout);
+    }
     else
+    {
         strcpy(valid_passport, "F");
+        strcpy(passport, "InValid");
+        printf("Passenger with pid = %d, is %s, and his passport is %s\n", getpid(), nataonality, passport);
+        fflush(stdout);
+    }
 
     sprintf(str_pid, "%d", getpid());
 
@@ -142,7 +159,7 @@ MESSAGE create_message()
 // SIGALRM catcher
 void signal_alarm_catcher(int the_sig)
 {
-    printf("passenger with pid = %d, exited from alarm\n", getpid());
+    printf("passenger with pid = %d, got impatient and exited\n", getpid());
     fflush(stdout);
     impatient();
     exit(1);
@@ -169,18 +186,17 @@ void impatient()
     key_t key;
 
     key = ftok(".", SEM_IMPATIENT_SEED);
-    if ((semid = semget(key, 1, IPC_EXCL | 0660)) != -1)
+    if ((semid = semget(key, 1, IPC_EXCL | 0660)) == -1)
     {
-        printf(" acceess granted connected\n");
+        perror(" cant access semaphore");
     }
 
     if (semop(semid, &acquire, 1) == -1)
     {
         perror("semop -- producer -- waiting for consumer to read number passenger ");
-        exit(3);
+        return;
     }
 
-    // TODO: increment the access granted
     char *shmptr;
     int tmp;
     long shmid;
@@ -201,7 +217,7 @@ void impatient()
         tmp = atoi(shmptr);
         tmp++;
         sprintf(shmptr, "%d", tmp);
-        printf(" Impatient is: ------------------------ (%s) ---------------------\n", shmptr);
+        printf(" Impatient count is: ------------------------ (%s) ---------------------\n", shmptr);
         shmdt(shmid);
     }
     else
@@ -214,7 +230,6 @@ void impatient()
         perror("semop -- producer -- indicating new number has been made");
         exit(5);
     }
-    printf(" my paaaaaaaaaaaaaaaaaaaarent is %d", getppid());
 
     if (tmp == impatient_count)
     {

@@ -33,8 +33,6 @@ int main(int argc, char *argv[])
     min_limit = atoi(argv[1]);
     access_granted_count = atoi(argv[3]);
 
-    printf("the hall id is: %d\n", getpid());
-
     // Sigalarm catcher
     if (sigset(SIGALRM, signal_alarm_catcher) == SIGALRM)
     {
@@ -74,9 +72,6 @@ int main(int argc, char *argv[])
     pid_t bus_pid_array[num_of_busses], bus_msg_array[num_of_busses];
 
     strcpy(str_bus_ids, argv[2]);
-    printf(" -=+++++++++++++ %s +++++++++++=\n", str_bus_ids);
-    printf(" 999 %s 999\n", str_bus_ids);
-
     char *pch = strtok(str_bus_ids, "-");
     bus_pid_array[0] = atoi(pch);
 
@@ -85,11 +80,6 @@ int main(int argc, char *argv[])
 
         pch = strtok(NULL, "-");
         bus_pid_array[i] = atoi(pch);
-    }
-
-    for (int i = 0; i < num_of_busses; i++)
-    {
-        printf("INTEGER_PID : %d\n", bus_pid_array[i]);
     }
 
     for (int i = 0; i < num_of_busses; i++)
@@ -108,11 +98,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if ((bus_sem_array_id = semget(key, num_of_busses, 0)) != -1)
-    {
-        printf("------------------------ ( shem connected ) ---------------------\n");
-    }
-    else
+    if ((bus_sem_array_id = semget(key, num_of_busses, 0)) == -1)
     {
         perror("shmid1 -- parent -- creation 55555555");
         exit(2);
@@ -153,7 +139,7 @@ int main(int argc, char *argv[])
                     exit(4);
                 }
 
-                printf(" current bus: %d,  with sem_value = %d \n\n", current_bus, current_value);
+                printf(" current bus is: %d,  with avilable space = %d \n\n", current_bus, current_value);
                 while (current_value > 0)
                 {
 
@@ -168,7 +154,7 @@ int main(int argc, char *argv[])
                         perror("Client1212: msgsend");
                         break;
                     }
-                    printf(" ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ load in bus : %d\n", current_bus);
+                    printf("passenger %d got in bus %d\n",passenger_id, current_bus);
 
                     hall_count--;
                     current_value--;
@@ -185,11 +171,10 @@ int main(int argc, char *argv[])
                             perror("semctl: GETVAL");
                             exit(4);
                         }
-                        printf("{{{{ sem after set is  %d  }}}} \n\n", current_value2);
 
                         if (current_value2 == 0)
                         {
-                            printf(" ========================== send signal to bus : %d \n", current_bus);
+                            printf("send signal to bus %d to move \n", current_bus);
                             kill(bus_pid_array[current_bus], SIGUSR1);
                         }
 
@@ -201,23 +186,7 @@ int main(int argc, char *argv[])
                 if (current_value == 0)
                 {
                     current_bus = (current_bus + 1) % num_of_busses;
-                    printf(" GGGGGGGoing to NEEEEEXT BUS\n");
                 }
-            }
-        }
-        else if (end_flag == 1)
-        {
-            while (1)
-            {
-                passenger_id = deQueue(passengers);
-                // queue is empty
-                if (passenger_id == -1)
-                {
-                    msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
-                    printf("HALL IS CLEAN NOW\n");
-                    return 0;
-                }
-                kill(passenger_id, SIGKILL);
             }
         }
     }
@@ -236,6 +205,7 @@ void cleanup()
         {
             msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
             printf("HALL IS CLEAN NOW\n");
+            fflush(stdout);
             return 0;
         }
         kill(passenger_id, SIGKILL);
@@ -312,9 +282,9 @@ void access_granted()
     key_t key;
 
     key = ftok(".", SEM_ACCESS_GRANTED_SEED);
-    if ((semid = semget(key, 1, IPC_EXCL | 0660)) != -1)
+    if ((semid = semget(key, 1, IPC_EXCL | 0660)) == -1)
     {
-        printf(" acceess granted connected\n");
+        perror("cant access sem");
     }
 
     if (semop(semid, &acquire, 1) == -1)
@@ -344,7 +314,8 @@ void access_granted()
         tmp = atoi(shmptr);
         tmp++;
         sprintf(shmptr, "%d", tmp);
-        printf(" access granted is: ------------------------ (%s) ---------------------\n", shmptr);
+        printf("Access granted count is: ------------------------ (%s) ---------------------\n", shmptr);
+        fflush(stdout);
         shmdt(shmid);
     }
     else
@@ -357,10 +328,6 @@ void access_granted()
         perror("semop -- producer -- indicating new number has been made");
         exit(5);
     }
-
-    printf(" acces tmp =============================== %d \n\n", tmp);
-    printf(" acces value =============================== %d \n\n", access_granted_count);
-    fflush(stdout);
     if (tmp == access_granted_count)
     {
         int parent = getppid();
@@ -372,4 +339,5 @@ void access_granted()
 void signal_end_catcher(int the_sig)
 {
     end_flag = 1;
+    cleanup();
 }

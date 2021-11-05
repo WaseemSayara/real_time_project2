@@ -12,6 +12,7 @@ void empty_bus(int);
 
 long mid;
 int ready_flag = 0, num_of_busses, capacity_of_bus, bus_num;
+struct Queue *passengers;
 
 int main(int argc, char *argv[])
 {
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
     }
     alarm(150);
 
-    struct Queue *passengers = createQueue();
+    passengers = createQueue();
 
     while (1)
     {
@@ -82,6 +83,7 @@ int main(int argc, char *argv[])
                 if (passenger_id == -1)
                 {
                     printf("BUSS %d is entered break\n", bus_num);
+                    fflush(stdout);
                     break;
                 }
                 kill(passenger_id, SIGKILL);
@@ -90,25 +92,28 @@ int main(int argc, char *argv[])
             empty_bus(bus_num);
             ready_flag == 0;
             printf("BUSS %d is ready to load\n", bus_num);
-        }
-        else if (ready_flag == 2) // end program case
-        {
-            while (1)
-            {
-                passenger_id = deQueue(passengers);
-                // queue is empty
-                if (passenger_id == -1)
-                {
-                    msgctl(mid, IPC_RMID, (struct msqid_ds *) 0);
-                    printf("BUS %d IS CLEAN NOW\n", bus_num);
-                    return 0;
-                }
-                kill(passenger_id, SIGKILL);
-            }
+            fflush(stdout);
         }
     }
 
     return 0;
+}
+
+void clean()
+{
+    int passenger_id;
+    while (1)
+    {
+        passenger_id = deQueue(passengers);
+        // queue is empty
+        if (passenger_id == -1)
+        {
+            msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
+            printf("BUS %d IS CLEAN NOW\n", bus_num);
+            return 0;
+        }
+        kill(passenger_id, SIGKILL);
+    }
 }
 
 // The function to add a key k to q
@@ -215,4 +220,5 @@ void signal_ready_catcher(int the_sig)
 void signal_end_catcher(int the_sig)
 {
     ready_flag = 2;
+    clean();
 }

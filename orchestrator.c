@@ -172,8 +172,6 @@ int main(int argc, char *argv[])
         char str_access_granted[5];
         sprintf(str_access_granted, "%d", access_granted);
 
-        printf(" 000000000000 %s\n", concatenate_pids);
-
         if (execl("./hall", str_max, str_min, concatenate_pids, str_access_granted, (char *)0) == -1)
         {
             perror("Faild to execute ./hall!");
@@ -241,9 +239,7 @@ int main(int argc, char *argv[])
         sleep(sleep_count);
     }
 
-    //TODO: clean the program.
-
-    printf(" letss end \n");
+    printf("CLEAN AFTER PROGRAM\n");
 
     kill(hall, SIGINT);
     for (int i = 0; i < num_of_busses; i++)
@@ -263,8 +259,6 @@ int main(int argc, char *argv[])
         kill(passengers_array[i], SIGKILL);
     }
 
-    printf("kiled children \n");
-
     delete_semaphore(SEM_ACCESS_GRANTED_SEED);
     delete_semaphore(SEM_ACCESS_DENIED_SEED);
     delete_semaphore(SEM_IMPATIENT_SEED);
@@ -274,7 +268,7 @@ int main(int argc, char *argv[])
     delete_shared_memory(ACCESS_DENIED_SEED);
     delete_shared_memory(IMPATIENT_SEED);
 
-    printf("kiled things \n");
+    printf("WAIT FEW SECONDS TO CLEAN\n");
 
     return 0;
 }
@@ -345,7 +339,6 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
     int sem_value;
 
     sem_array_key = ftok(".", SEM_ARRAY_SEED);
-    printf(" ------  Bus Semaphore: %d\n", sem_array_key);
     fflush(stdout);
 
     /*
@@ -356,9 +349,6 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
         perror("semget: IPC_CREAT | 0660");
         exit(1);
     }
-
-    printf("Semaphore identifier %d\n", sem_array_id);
-    fflush(stdout);
 
     // Initailize semaphore cell values
 
@@ -397,24 +387,14 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
             perror("semctl: GETVAL");
             exit(4);
         }
-
-        printf("Semaphore %d has value of %d\n", i, sem_value);
-        fflush(stdout);
     }
 
-    // // Remove Semaphore
-
-    // if (semctl(sem_array_id, 0, IPC_RMID, 0) == -1)
-    // {
-    //     perror("semctl: IPC_RMID"); /* remove semaphore */
-    //     exit(5);
-    // }
 }
 
 /*
 *
 *
-// ##################################################### Shared Memory ##################################################
+ ##################################################### Shared Memory ##################################################
 *
 *
 */
@@ -456,7 +436,7 @@ void create_shared_memory(char proj_id)
 /*
 *
 *
-// ##################################################### Signal Catcher ##################################################
+ ##################################################### Signal Catcher ##################################################
 *
 *
 */

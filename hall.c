@@ -144,6 +144,7 @@ int main(int argc, char *argv[])
             yellow();
             printf("the current count in the hall is --( %d )--\n", hall_count);
             fflush(stdout);
+            reset();
             increment_shared_memory(shmid_1);
 
             // check bus semaphores
@@ -168,11 +169,12 @@ int main(int argc, char *argv[])
                     perror("Client: msgsend");
                     return 4;
                 }
+                printf(" ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ load in bus : %d\n", current_bus);
 
                 hall_count--;
                 current_value--;
 
-                if (hall_count == 0)
+                if (hall_count == 0 || current_value == 0)
                 {
                     if (semctl(bus_sem_array_id, current_bus, SETVAL, current_value) == -1)
                     {
@@ -185,6 +187,12 @@ int main(int argc, char *argv[])
                         exit(4);
                     }
                     printf("{{{{ sem after set is  %d  }}}} \n\n", current_value2);
+
+                    if (current_value2 == 0){
+                        printf(" ========================== send signal to bus : %d \n", current_bus);
+                        kill(bus_pid_array[current_bus], SIGUSR1);
+                    }
+
                     break;
                 }
             }
@@ -193,7 +201,7 @@ int main(int argc, char *argv[])
             if (current_value == 0)
             {
                 current_bus = (current_bus + 1) % num_of_busses;
-                printf(" GGGGGGGoing to NEEEEEXT BUS");
+                printf(" GGGGGGGoing to NEEEEEXT BUS\n");
             }
         }
     }

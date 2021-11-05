@@ -6,12 +6,18 @@ int deQueue(struct Queue *);
 struct QNode *newNode(int id);
 struct Queue *createQueue();
 void signal_alarm_catcher(int);
-void increment_shared_memory(long);
+void access_granted();
+
 int hall_count = 0;
+
+int access_granted_count;
+
+static struct sembuf acquire = {0, -1, SEM_UNDO},
+                     release = {0, 1, SEM_UNDO};
 
 int main(int argc, char *argv[])
 {
-    
+
     long mid, shmid_1, shmid_2, shmid_3, bus_sem_array_id;
     int max_limit, min_limit, num_of_busses;
     char str_passenger_id[10], tmp[20];
@@ -19,10 +25,12 @@ int main(int argc, char *argv[])
     MESSAGE recieved_msg, to_bus_msg;
     key_t key;
     FILE *variables;
-    
+    char str_bus_ids[num_of_busses * 10];
+
     // Received threshold limits for hall
     max_limit = atoi(argv[0]);
     min_limit = atoi(argv[1]);
+    access_granted_count = atoi(argv[3]);
 
     printf("the hall id is: %d\n", getpid());
 
@@ -31,22 +39,6 @@ int main(int argc, char *argv[])
     {
         perror("Sigset can not set SIGALRM");
         exit(SIGALRM);
-    }
-
-    if ((key = ftok(".", ACCESS_GRANTED_SEED)) == -1)
-    {
-        perror("Client: key generation");
-        return 1;
-    }
-
-    if ((shmid_1 = shmget(key, 10, IPC_CREAT | 0666)) != -1)
-    {
-        printf("------------------------ ( shem connected ) ---------------------\n");
-    }
-    else
-    {
-        perror("shmid1 -- parent -- creation 666666666");
-        exit(2);
     }
 
     alarm(150);
@@ -74,10 +66,9 @@ int main(int argc, char *argv[])
     fclose(variables);
 
     pid_t bus_pid_array[num_of_busses], bus_msg_array[num_of_busses];
-    char str_bus_ids[num_of_busses * 10];
 
     strcpy(str_bus_ids, argv[2]);
-
+    printf(" -=+++++++++++++ %s +++++++++++=\n", str_bus_ids);
     printf(" 999 %s 999\n", str_bus_ids);
 
     char *pch = strtok(str_bus_ids, "-");
@@ -145,7 +136,7 @@ int main(int argc, char *argv[])
             printf("the current count in the hall is --( %d )--\n", hall_count);
             fflush(stdout);
             reset();
-            increment_shared_memory(shmid_1);
+            access_granted();
 
             // check bus semaphores
             if ((current_value = semctl(bus_sem_array_id, current_bus, GETVAL, 0)) == -1)
@@ -153,11 +144,11 @@ int main(int argc, char *argv[])
                 perror("semctl: GETVAL");
                 exit(4);
             }
-            
+
             printf(" current bus: %d,  with sem_value = %d \n\n", current_bus, current_value);
             while (current_value > 0)
             {
-                
+
                 passenger_id = deQueue(passengers);
                 sprintf(str_passenger_id, "%d", passenger_id);
 
@@ -188,7 +179,8 @@ int main(int argc, char *argv[])
                     }
                     printf("{{{{ sem after set is  %d  }}}} \n\n", current_value2);
 
-                    if (current_value2 == 0){
+                    if (current_value2 == 0)
+                    {
                         printf(" ========================== send signal to bus : %d \n", current_bus);
                         kill(bus_pid_array[current_bus], SIGUSR1);
                     }
@@ -265,27 +257,68 @@ struct Queue *createQueue()
     return q;
 }
 
-void increment_shared_memory(long shmid)
-{
-    char *shmptr;
-    int tmp;
-
-    if ((shmptr = (char *)shmat(shmid, 0, 0)) == (char *)-1)
-    {
-        perror("shmptr -- parent -- attach");
-        exit(1);
-    }
-    tmp = atoi(shmptr);
-    tmp++;
-    sprintf(shmptr, "%d", tmp);
-    printf(" mem is now : ------------------------ (%s) ---------------------\n", shmptr);
-    shmdt(shmid);
-}
-
 // SIGALRM Catcher
 void signal_alarm_catcher(int the_sig)
 {
     printf("Hall with pid = %d, exited from alarm\n", getpid());
     fflush(stdout);
     exit(1);
+}
+
+void access_granted()
+{
+    long semid;
+    key_t key;
+
+    key = ftok(".", SEM_ACCESS_GRANTED_SEED);
+    if ((semid = semget(key, 1, IPC_EXCL | 0660)) != -1)
+    {
+        printf(" acceess granted connected\n");
+    }
+
+    if (semop(semid, &acquire, 1) == -1)
+    {
+        perror("semop -- producer -- waiting for consumer to read number");
+        exit(3);
+    }
+
+    // TODO: increment the access granted
+    char *shmptr;
+    int tmp;
+    long shmid;
+
+    if ((key = ftok(".", ACCESS_GRANTED_SEED)) == -1)
+    {
+        perror("Client: key generation");
+        return 1;
+    }
+
+    if ((shmid = shmget(key, 10, 0666)) != -1)
+    {
+        if ((shmptr = (char *)shmat(shmid, 0, 0)) == (char *)-1)
+        {
+            perror("shmptr -- parent -- attach");
+            exit(1);
+        }
+        tmp = atoi(shmptr);
+        tmp++;
+        sprintf(shmptr, "%d", tmp);
+        printf(" access granted is: ------------------------ (%s) ---------------------\n", shmptr);
+        shmdt(shmid);
+    }
+    else
+    {
+        perror("shm attach");
+    }
+
+    if (semop(semid, &release, 1) == -1)
+    {
+        perror("semop -- producer -- indicating new number has been made");
+        exit(5);
+    }
+
+    if (tmp == access_granted_count)
+    {
+        kill(getppid(), SIGUSR1);
+    }
 }

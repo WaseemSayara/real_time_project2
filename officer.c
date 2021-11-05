@@ -2,7 +2,12 @@
 #include "local.h"
 
 void signal_alarm_catcher(int the_sig);
+void access_denied();
 
+static struct sembuf acquire = {0, -1, SEM_UNDO},
+                     release = {0, 1, SEM_UNDO};
+
+int access_denied_count;
 int main(int argc, char *argv[])
 {
 
@@ -11,6 +16,8 @@ int main(int argc, char *argv[])
     long mid, hall_mid;
     key_t key, hall_key;
     MESSAGE msg;
+
+    access_denied_count = atoi(argv[1]);
 
     srand(getpid());
 
@@ -115,4 +122,61 @@ int main(int argc, char *argv[])
 void signal_alarm_catcher(int the_sig)
 {
     exit(1);
+}
+
+void access_denied()
+{
+    long semid;
+    key_t key;
+
+    key = ftok(".", SEM_ACCESS_DENIED_SEED);
+    if ((semid = semget(key, 1, IPC_EXCL | 0660)) != -1)
+    {
+        printf(" acceess granted connected\n");
+    }
+
+    if (semop(semid, &acquire, 1) == -1)
+    {
+        perror("semop -- producer -- waiting for consumer to read number");
+        exit(3);
+    }
+
+    // TODO: increment the access granted
+    char *shmptr;
+    int tmp;
+    long shmid;
+
+    if ((key = ftok(".", ACCESS_DENIED_SEED)) == -1)
+    {
+        perror("Client: key generation");
+        return 1;
+    }
+
+    if ((shmid = shmget(key, 10, 0666)) != -1)
+    {
+        if ((shmptr = (char *)shmat(shmid, 0, 0)) == (char *)-1)
+        {
+            perror("shmptr -- parent -- attach");
+            exit(1);
+        }
+        tmp = atoi(shmptr);
+        tmp++;
+        sprintf(shmptr, "%d", tmp);
+        printf(" access denied is: ------------------------ (%s) ---------------------\n", shmptr);
+        shmdt(shmid);
+    }
+    else
+    {
+        perror("shm attach");
+    }
+
+    if (semop(semid, &release, 1) == -1)
+    {
+        perror("semop -- producer -- indicating new number has been made");
+        exit(5);
+    }
+
+    if (tmp == access_denied_count){
+        kill(getppid(), SIGUSR1);
+    }
 }

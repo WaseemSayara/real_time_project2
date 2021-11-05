@@ -1,28 +1,44 @@
 #include "local.h"
 
-void signal_quit_catcher(int);
+void signal_int_catcher(int);
+void signal_usr1_catcher(int);
+void signal_usr2_catcher(int);
 void bus_semaphore(int, int);
-void create_shared_memory(int);
+void create_shared_memory(char);
+void create_semaphore(char);
+
+static ushort start_val[2] = {1, 0};
+int semid, producer = 0, i, n, p_sleep, c_sleep;
+union semun arg;
+
+int end_flag = 0;
 
 int main(int argc, char *argv[])
 {
-    int i, status, num_of_busses, capacity_of_bus, num_of_officers, hall_max_count, hall_min_count, sem_value;
+    int i, status, num_of_busses, capacity_of_bus,
+        num_of_officers, hall_max_count, hall_min_count, sem_value,
+        access_granted, access_denied, impatient;
     long shmid_1, shmid_2, shmid_3, sem_array_id;
     char tmp[20], seed = 'A', *shmptr1, *shmptr2, *shmptr3, *tmp_char;
     pid_t pid, hall, pid_array[3];
     key_t key, sem_array_key;
     FILE *variables;
 
-    // if (sigset(SIGSTOP, signal_quit_catcher) == SIGSTOP)
-    // {
-    // perror("Sigset can not set SIGINT");
-    // exit(SIGSTOP);
-    // }
-    // if (sigset(SIGINT, signal_quit_catcher) == SIGINT)
-    // {
-    // perror("Sigset can not set SIGINT");
-    // exit(SIGINT);
-    // }
+    if (sigset(SIGUSR1, signal_usr1_catcher) == SIGUSR1)
+    {
+        perror("Sigset can not set SIGINT");
+        exit(SIGUSR1);
+    }
+    if (sigset(SIGUSR2, signal_usr1_catcher) == SIGUSR2)
+    {
+        perror("Sigset can not set SIGINT");
+        exit(SIGUSR1);
+    }
+    if (sigset(SIGINT, signal_int_catcher) == SIGINT)
+    {
+        perror("Sigset can not set SIGINT");
+        exit(SIGINT);
+    }
 
     variables = fopen("variables.txt", "r");
     fscanf(variables, "%s %d\n", &tmp, &num_of_busses);
@@ -30,6 +46,9 @@ int main(int argc, char *argv[])
     fscanf(variables, "%s %d\n", &tmp, &num_of_officers);
     fscanf(variables, "%s %d\n", &tmp, &hall_max_count);
     fscanf(variables, "%s %d\n", &tmp, &hall_min_count);
+    fscanf(variables, "%s %d\n", &tmp, &access_granted);
+    fscanf(variables, "%s %d\n", &tmp, &access_denied);
+    fscanf(variables, "%s %d\n", &tmp, &impatient);
     fclose(variables);
 
     /*
@@ -37,6 +56,7 @@ int main(int argc, char *argv[])
 */
 
     bus_semaphore(num_of_busses, capacity_of_bus);
+    create_semaphore(SEM_ACCESS_GRANTED_SEED);
 
     /*
 * Create shared memory
@@ -67,7 +87,7 @@ int main(int argc, char *argv[])
             char str_bus_num[3];
             sprintf(str_bus_num, "%d", i);
             // Assign Referee process
-            if (execl("./bus",str_bus_num, (char *)0) == -1)
+            if (execl("./bus", str_bus_num, (char *)0) == -1)
             {
                 perror("Faild to execute ./bus!");
                 exit(3);
@@ -94,7 +114,9 @@ int main(int argc, char *argv[])
         else if (pid == 0)
         {
             // Assign Referee process
-            if (execl("./officer", &seed, (char *)0) == -1)
+            char str_access_denied[5];
+            sprintf(str_access_denied, "%d", access_denied);
+            if (execl("./officer", &seed, str_access_denied, (char *)0) == -1)
             {
                 perror("Faild to execute ./officer!");
                 exit(3);
@@ -137,7 +159,12 @@ int main(int argc, char *argv[])
         sprintf(str_max, "%d", hall_max_count);
         sprintf(str_min, "%d", hall_min_count);
 
-        if (execl("./hall", str_max, str_min, concatenate_pids, (char *)0) == -1)
+        char str_access_granted[5];
+        sprintf(str_access_granted, "%d", access_granted);
+
+        printf(" 000000000000 %s\n", concatenate_pids);
+
+        if (execl("./hall", str_max, str_min, concatenate_pids, str_access_granted, (char *)0) == -1)
         {
             perror("Faild to execute ./hall!");
             exit(3);
@@ -158,14 +185,22 @@ int main(int argc, char *argv[])
         int sleep_count, passengers_count;
         sleep_count = (rand() % 3) + 1;
         passengers_count = (rand() % 6) + 5;
+        char str_impatient[5];
+        sprintf(str_impatient, "%d", impatient);
 
         for (i = 0; i < passengers_count; i++)
         {
+
+            if (end_flag == 1)
+            {
+                break;
+            }
 
             pid = fork();
 
             if (pid == -1)
             {
+
                 perror("failed to fork passenger");
                 exit(2);
             }
@@ -177,7 +212,7 @@ int main(int argc, char *argv[])
                 char str_officers_count[4];
                 sprintf(str_officers_count, "%d", num_of_officers);
 
-                if (execl("./passenger", str_officers_count, (char *)0) == -1)
+                if (execl("./passenger", str_officers_count, str_impatient, (char *)0) == -1)
                 {
                     perror("Faild to execute ./passenger!");
                     exit(3);
@@ -187,6 +222,10 @@ int main(int argc, char *argv[])
         sleep(sleep_count);
         k++;
     }
+
+    //TODO: clean the program.
+
+    printf(" letss end \n");
 
     return 0;
 }
@@ -198,6 +237,22 @@ int main(int argc, char *argv[])
 *
 *
 */
+
+void create_semaphore(char seed)
+{
+    long semid;
+    key_t key;
+
+    key = ftok(".", seed);
+    if ((semid = semget(key, 1, IPC_CREAT | IPC_EXCL | 0660)) != -1)
+    {
+
+        if (semctl(semid, 0, SETVAL, 1) == -1)
+        {
+            perror("ERROR in SETVAL");
+        }
+    }
+}
 
 void bus_semaphore(int num_of_busses, int capacity_of_bus)
 {
@@ -281,14 +336,11 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
 *
 */
 
-void create_shared_memory(int proj_id)
+void create_shared_memory(char proj_id)
 {
     key_t key;
     long shmid;
     char *shmptr, *tmp_char;
-    char shared_memory_owner[25];
-
-    sprintf(shared_memory_owner, "%d", proj_id);
 
     if ((key = ftok(".", proj_id)) == -1)
     {
@@ -311,7 +363,7 @@ void create_shared_memory(int proj_id)
     }
     else
     {
-        perror(shared_memory_owner);
+        perror("shmid create ");
         exit(2);
     }
 
@@ -326,7 +378,23 @@ void create_shared_memory(int proj_id)
 *
 */
 
-void signal_quit_catcher(int the_sig)
+void signal_usr1_catcher(int the_sig)
 {
-    exit(1);
+    printf("\n Program ended due to enough passengers were GRANTED to access the porders \n");
+    fflush(stdout);
+    end_flag = 1;
+}
+
+void signal_usr2_catcher(int the_sig)
+{
+    printf("\n Program ended due to enough passengers were DENIED to access the porders \n");
+    fflush(stdout);
+    end_flag = 1;
+}
+
+void signal_int_catcher(int the_sig)
+{
+    printf("\n Program ended due to enough passengers were IMPATIENT and left \n");
+    fflush(stdout);
+    end_flag = 1;
 }

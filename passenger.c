@@ -5,6 +5,12 @@ MESSAGE create_message();
 void signal_alarm_catcher(int);
 void signal_usr1_catcher(int);
 void signal_in_valid_passport_catcher(int);
+void impatient();
+
+static struct sembuf acquire = {0, -1, SEM_UNDO},
+                     release = {0, 1, SEM_UNDO};
+
+int impatient_count;
 
 int main(int argc, char *argv[])
 {
@@ -54,6 +60,8 @@ int main(int argc, char *argv[])
     officers = atoi(argv[0]);
     arab_officers = officers * ARAB_PERCENTS;
 
+    impatient_count = atoi(argv[1]);
+
     if (nationality == 0)
     {
         tmp = (rand() % arab_officers);
@@ -81,7 +89,7 @@ int main(int argc, char *argv[])
     msg = create_message();
 
     printf("From passenger : %s , with seed = %c \n", msg.mtext, SEED);
-     fflush(stdout);
+    fflush(stdout);
 
     int buf_length = strlen(msg.mtext) + 1;
 
@@ -152,4 +160,62 @@ void signal_in_valid_passport_catcher(int the_sig)
     printf("passenger with pid = %d, exited due to inValid passport\n", getpid());
     fflush(stdout);
     exit(2);
+}
+
+void impatient()
+{
+    long semid;
+    key_t key;
+
+    key = ftok(".", SEM_IMPATIENT_SEED);
+    if ((semid = semget(key, 1, IPC_EXCL | 0660)) != -1)
+    {
+        printf(" acceess granted connected\n");
+    }
+
+    if (semop(semid, &acquire, 1) == -1)
+    {
+        perror("semop -- producer -- waiting for consumer to read number");
+        exit(3);
+    }
+
+    // TODO: increment the access granted
+    char *shmptr;
+    int tmp;
+    long shmid;
+
+    if ((key = ftok(".", IMPATIENT_SEED)) == -1)
+    {
+        perror("Client: key generation");
+        return 1;
+    }
+
+    if ((shmid = shmget(key, 10, 0666)) != -1)
+    {
+        if ((shmptr = (char *)shmat(shmid, 0, 0)) == (char *)-1)
+        {
+            perror("shmptr -- parent -- attach");
+            exit(1);
+        }
+        tmp = atoi(shmptr);
+        tmp++;
+        sprintf(shmptr, "%d", tmp);
+        printf(" access denied is: ------------------------ (%s) ---------------------\n", shmptr);
+        shmdt(shmid);
+    }
+    else
+    {
+        perror("shm attach");
+    }
+
+    if (semop(semid, &release, 1) == -1)
+    {
+        perror("semop -- producer -- indicating new number has been made");
+        exit(5);
+    }
+
+    if (tmp == impatient_count)
+    {
+        kill(getppid(), SIGUSR1);
+    }
 }

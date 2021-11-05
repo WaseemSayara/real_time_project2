@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
         }
         else if (ready_flag == 1)
         {
-            sleep_time = rand() % 4 + 10;
+            sleep_time = rand() % 4 + 15;
             sleep(sleep_time);
             while (1)
             {

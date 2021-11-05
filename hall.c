@@ -9,7 +9,7 @@ void signal_end_catcher(int);
 void signal_alarm_catcher(int);
 void access_granted();
 
-int hall_count = 0, end_flag = 0;
+int hall_count = 0, end_flag = 0, start_min = 0;
 int access_granted_count;
 long mid;
 static struct sembuf acquire = {0, -1, SEM_UNDO},
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
     {
         if (end_flag == 0)
         {
-            if (hall_count < max_limit)
+            if ((hall_count < max_limit))
             {
                 if (msgrcv(mid, &recieved_msg, HALL_MESSAGE_SIZE, HALL_MESSAGE_TYPE, 0) == -1)
                 {
@@ -190,6 +190,71 @@ int main(int argc, char *argv[])
                 {
                     current_bus = (current_bus + 1) % num_of_busses;
                 }
+            }
+            else
+            {
+
+                while (hall_count > min_limit)
+                {
+                    if ((current_value = semctl(bus_sem_array_id, current_bus, GETVAL, 0)) == -1)
+                    {
+                        perror("semctl: GETVAL");
+                        exit(4);
+                    }
+
+                    while (current_value > 0)
+                    {
+
+                        passenger_id = deQueue(passengers);
+                        sprintf(str_passenger_id, "%d", passenger_id);
+
+                        to_bus_msg.mtype = BUS_MESSAGE_TYPE;
+                        strcpy(to_bus_msg.mtext, str_passenger_id);
+
+                        if (msgsnd(bus_msg_array[current_bus], &to_bus_msg, BUS_MESSAGE_SIZE, 0) == -1)
+                        {
+                            perror("Client1212: msgsend");
+                            break;
+                        }
+                        printf("passenger %d got in bus %d\n", passenger_id, current_bus);
+
+                        hall_count--;
+                        current_value--;
+
+                        if (hall_count == 0 || current_value == 0)
+                        {
+                            if (semctl(bus_sem_array_id, current_bus, SETVAL, current_value) == -1)
+                            {
+                                perror("SETVAL error");
+                            }
+                            int current_value2;
+                            if ((current_value2 = semctl(bus_sem_array_id, current_bus, GETVAL, 0)) == -1)
+                            {
+                                perror("semctl: GETVAL");
+                                exit(4);
+                            }
+
+                            if (current_value2 == 0)
+                            {
+                                cyan();
+                                printf("send signal to bus %d to move \n", current_bus);
+                                fflush(stdout);
+                                reset();
+                                kill(bus_pid_array[current_bus], SIGUSR1);
+                            }
+
+                            break;
+                        }
+                    }
+
+                    // if there is no space left in the bus -> go to next bus
+                    if (current_value == 0)
+                    {
+                        current_bus = (current_bus + 1) % num_of_busses;
+                    }
+                }
+
+                start_min = 1;
             }
         }
     }
@@ -296,7 +361,6 @@ void access_granted()
         exit(3);
     }
 
-    // TODO: increment the access granted
     char *shmptr;
     int tmp;
     long shmid;

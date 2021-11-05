@@ -5,20 +5,21 @@ void enQueue(struct Queue *, int);
 int deQueue(struct Queue *);
 struct QNode *newNode(int id);
 struct Queue *createQueue();
+void signal_end_catcher(int);
 void signal_alarm_catcher(int);
 void access_granted();
 
-int hall_count = 0;
-
+int hall_count = 0, end_flag = 0;
 int access_granted_count;
-
+long mid;
 static struct sembuf acquire = {0, -1, SEM_UNDO},
                      release = {0, 1, SEM_UNDO};
 
+struct Queue *passengers;
 int main(int argc, char *argv[])
 {
 
-    long mid, shmid_1, shmid_2, shmid_3, bus_sem_array_id;
+    long shmid_1, shmid_2, shmid_3, bus_sem_array_id;
     int max_limit, min_limit, num_of_busses;
     char str_passenger_id[10], tmp[20];
     struct msqid_ds buf;
@@ -40,10 +41,15 @@ int main(int argc, char *argv[])
         perror("Sigset can not set SIGALRM");
         exit(SIGALRM);
     }
+    if (sigset(SIGINT, signal_end_catcher) == SIGINT)
+    {
+        perror("Sigset can not set SIGALRM");
+        exit(SIGINT);
+    }
 
-    alarm(150);
+    alarm(250);
 
-    struct Queue *passengers = createQueue();
+    passengers = createQueue();
 
     if ((key = ftok(".", HALL_SEED)) == -1)
     {
@@ -118,87 +124,122 @@ int main(int argc, char *argv[])
 
     while (1)
     {
-        if (hall_count < max_limit)
+        if (end_flag == 0)
         {
-            if (msgrcv(mid, &recieved_msg, HALL_MESSAGE_SIZE, HALL_MESSAGE_TYPE, 0) == -1)
+            if (hall_count < max_limit)
             {
-                perror("Client3 : msgsend");
-                return 4;
-            }
-            int passenger_id = atoi(recieved_msg.mtext);
-
-            printf("passenger (%d) is recived in to hall\n", passenger_id);
-            fflush(stdout);
-
-            enQueue(passengers, passenger_id);
-            hall_count++;
-            yellow();
-            printf("the current count in the hall is --( %d )--\n", hall_count);
-            fflush(stdout);
-            reset();
-            access_granted();
-
-            // check bus semaphores
-            if ((current_value = semctl(bus_sem_array_id, current_bus, GETVAL, 0)) == -1)
-            {
-                perror("semctl: GETVAL");
-                exit(4);
-            }
-
-            printf(" current bus: %d,  with sem_value = %d \n\n", current_bus, current_value);
-            while (current_value > 0)
-            {
-
-                passenger_id = deQueue(passengers);
-                sprintf(str_passenger_id, "%d", passenger_id);
-
-                to_bus_msg.mtype = BUS_MESSAGE_TYPE;
-                strcpy(to_bus_msg.mtext, str_passenger_id);
-
-                if (msgsnd(bus_msg_array[current_bus], &to_bus_msg, BUS_MESSAGE_SIZE, 0) == -1)
+                if (msgrcv(mid, &recieved_msg, HALL_MESSAGE_SIZE, HALL_MESSAGE_TYPE, 0) == -1)
                 {
-                    perror("Client: msgsend");
+                    perror("Client3 : msgsend");
                     return 4;
                 }
-                printf(" ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ load in bus : %d\n", current_bus);
+                int passenger_id = atoi(recieved_msg.mtext);
 
-                hall_count--;
-                current_value--;
+                printf("passenger (%d) is recived in to hall\n", passenger_id);
+                fflush(stdout);
 
-                if (hall_count == 0 || current_value == 0)
+                enQueue(passengers, passenger_id);
+                hall_count++;
+                yellow();
+                printf("the current count in the hall is --( %d )--\n", hall_count);
+                fflush(stdout);
+                reset();
+                access_granted();
+
+                // check bus semaphores
+                if ((current_value = semctl(bus_sem_array_id, current_bus, GETVAL, 0)) == -1)
                 {
-                    if (semctl(bus_sem_array_id, current_bus, SETVAL, current_value) == -1)
-                    {
-                        perror("SETVAL error");
-                    }
-                    int current_value2;
-                    if ((current_value2 = semctl(bus_sem_array_id, current_bus, GETVAL, 0)) == -1)
-                    {
-                        perror("semctl: GETVAL");
-                        exit(4);
-                    }
-                    printf("{{{{ sem after set is  %d  }}}} \n\n", current_value2);
+                    perror("semctl: GETVAL");
+                    exit(4);
+                }
 
-                    if (current_value2 == 0)
-                    {
-                        printf(" ========================== send signal to bus : %d \n", current_bus);
-                        kill(bus_pid_array[current_bus], SIGUSR1);
-                    }
+                printf(" current bus: %d,  with sem_value = %d \n\n", current_bus, current_value);
+                while (current_value > 0)
+                {
 
-                    break;
+                    passenger_id = deQueue(passengers);
+                    sprintf(str_passenger_id, "%d", passenger_id);
+
+                    to_bus_msg.mtype = BUS_MESSAGE_TYPE;
+                    strcpy(to_bus_msg.mtext, str_passenger_id);
+
+                    if (msgsnd(bus_msg_array[current_bus], &to_bus_msg, BUS_MESSAGE_SIZE, 0) == -1)
+                    {
+                        perror("Client1212: msgsend");
+                        break;
+                    }
+                    printf(" ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ load in bus : %d\n", current_bus);
+
+                    hall_count--;
+                    current_value--;
+
+                    if (hall_count == 0 || current_value == 0)
+                    {
+                        if (semctl(bus_sem_array_id, current_bus, SETVAL, current_value) == -1)
+                        {
+                            perror("SETVAL error");
+                        }
+                        int current_value2;
+                        if ((current_value2 = semctl(bus_sem_array_id, current_bus, GETVAL, 0)) == -1)
+                        {
+                            perror("semctl: GETVAL");
+                            exit(4);
+                        }
+                        printf("{{{{ sem after set is  %d  }}}} \n\n", current_value2);
+
+                        if (current_value2 == 0)
+                        {
+                            printf(" ========================== send signal to bus : %d \n", current_bus);
+                            kill(bus_pid_array[current_bus], SIGUSR1);
+                        }
+
+                        break;
+                    }
+                }
+
+                // if there is no space left in the bus -> go to next bus
+                if (current_value == 0)
+                {
+                    current_bus = (current_bus + 1) % num_of_busses;
+                    printf(" GGGGGGGoing to NEEEEEXT BUS\n");
                 }
             }
-
-            // if there is no space left in the bus -> go to next bus
-            if (current_value == 0)
+        }
+        else if (end_flag == 1)
+        {
+            while (1)
             {
-                current_bus = (current_bus + 1) % num_of_busses;
-                printf(" GGGGGGGoing to NEEEEEXT BUS\n");
+                passenger_id = deQueue(passengers);
+                // queue is empty
+                if (passenger_id == -1)
+                {
+                    msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
+                    printf("HALL IS CLEAN NOW\n");
+                    return 0;
+                }
+                kill(passenger_id, SIGKILL);
             }
         }
     }
 
     return 0;
+}
+
+void cleanup()
+{
+    int passenger_id;
+    while (1)
+    {
+        passenger_id = deQueue(passengers);
+        // queue is empty
+        if (passenger_id == -1)
+        {
+            msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
+            printf("HALL IS CLEAN NOW\n");
+            return 0;
+        }
+        kill(passenger_id, SIGKILL);
+    }
 }
 
 // The function to add a key k to q
@@ -278,7 +319,7 @@ void access_granted()
 
     if (semop(semid, &acquire, 1) == -1)
     {
-        perror("semop -- producer -- waiting for consumer to read number");
+        perror("semop -- producer -- waiting for consumer to read number hall ");
         exit(3);
     }
 
@@ -317,8 +358,18 @@ void access_granted()
         exit(5);
     }
 
+    printf(" acces tmp =============================== %d \n\n", tmp);
+    printf(" acces value =============================== %d \n\n", access_granted_count);
+    fflush(stdout);
     if (tmp == access_granted_count)
     {
-        kill(getppid(), SIGUSR1);
+        int parent = getppid();
+        if (parent != 1)
+            kill(getppid(), SIGUSR1);
     }
+}
+
+void signal_end_catcher(int the_sig)
+{
+    end_flag = 1;
 }

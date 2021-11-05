@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 
     if (msgsnd(mid, &msg, buf_length, 0) == -1)
     {
-        perror("Client: msgsend");
+        perror("Client335: msgsend");
         return 4;
     }
 
@@ -144,6 +144,7 @@ void signal_alarm_catcher(int the_sig)
 {
     printf("passenger with pid = %d, exited from alarm\n", getpid());
     fflush(stdout);
+    impatient();
     exit(1);
 }
 
@@ -175,7 +176,7 @@ void impatient()
 
     if (semop(semid, &acquire, 1) == -1)
     {
-        perror("semop -- producer -- waiting for consumer to read number");
+        perror("semop -- producer -- waiting for consumer to read number passenger ");
         exit(3);
     }
 
@@ -200,7 +201,7 @@ void impatient()
         tmp = atoi(shmptr);
         tmp++;
         sprintf(shmptr, "%d", tmp);
-        printf(" access denied is: ------------------------ (%s) ---------------------\n", shmptr);
+        printf(" Impatient is: ------------------------ (%s) ---------------------\n", shmptr);
         shmdt(shmid);
     }
     else
@@ -213,9 +214,12 @@ void impatient()
         perror("semop -- producer -- indicating new number has been made");
         exit(5);
     }
+    printf(" my paaaaaaaaaaaaaaaaaaaarent is %d", getppid());
 
     if (tmp == impatient_count)
     {
-        kill(getppid(), SIGUSR1);
+        int parent = getppid();
+        if (parent > 10)
+            kill(getppid(), SIGINT);
     }
 }

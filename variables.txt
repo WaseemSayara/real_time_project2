@@ -4,5 +4,5 @@ Num_Of_Officers 10
 Hall_Max_Count 50
 Hall_Min_Count 30
 Access_Granted 200
-Access_Denied 20
-IMPATIENT 20
+Access_Denied 5
+IMPATIENT 10

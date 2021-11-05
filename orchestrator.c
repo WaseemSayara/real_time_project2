@@ -6,6 +6,8 @@ void signal_usr2_catcher(int);
 void bus_semaphore(int, int);
 void create_shared_memory(char);
 void create_semaphore(char);
+void delete_semaphore(char);
+void delete_shared_memory(char);
 
 static ushort start_val[2] = {1, 0};
 int semid, producer = 0, i, n, p_sleep, c_sleep;
@@ -29,7 +31,7 @@ int main(int argc, char *argv[])
         perror("Sigset can not set SIGINT");
         exit(SIGUSR1);
     }
-    if (sigset(SIGUSR2, signal_usr1_catcher) == SIGUSR2)
+    if (sigset(SIGUSR2, signal_usr2_catcher) == SIGUSR2)
     {
         perror("Sigset can not set SIGINT");
         exit(SIGUSR1);
@@ -57,6 +59,8 @@ int main(int argc, char *argv[])
 
     bus_semaphore(num_of_busses, capacity_of_bus);
     create_semaphore(SEM_ACCESS_GRANTED_SEED);
+    create_semaphore(SEM_ACCESS_DENIED_SEED);
+    create_semaphore(SEM_IMPATIENT_SEED);
 
     /*
 * Create shared memory
@@ -70,6 +74,12 @@ int main(int argc, char *argv[])
 
     pid_t bus_array[num_of_busses];
     pid_t officer_array[num_of_officers];
+    pid_t passengers_array[400];
+
+    for (int i = 0; i < 400; i++)
+    {
+        passengers_array[i] = 0;
+    }
 
     for (i = 0; i < num_of_busses; i++)
     {
@@ -180,7 +190,7 @@ int main(int argc, char *argv[])
 
     //????????????????????????????????????????????????????? WHY K is constant from 0 to 4 & K express what!! ???????????????????????????????????????????????????????????
     int k = 0;
-    while (k < 15)
+    while (1)
     {
         int sleep_count, passengers_count;
         sleep_count = (rand() % 3) + 1;
@@ -218,14 +228,53 @@ int main(int argc, char *argv[])
                     exit(3);
                 }
             }
+            else
+            {
+                passengers_array[k] = pid;
+                k++;
+            }
+        }
+        if (end_flag == 1)
+        {
+            break;
         }
         sleep(sleep_count);
-        k++;
     }
 
     //TODO: clean the program.
 
     printf(" letss end \n");
+
+    kill(hall, SIGINT);
+    for (int i = 0; i < num_of_busses; i++)
+    {
+        kill(bus_array[i], SIGINT);
+    }
+    for (int i = 0; i < num_of_officers; i++)
+    {
+        kill(officer_array[i], SIGINT);
+    }
+    for (int i = 0; i < 400; i++)
+    {
+        if (passengers_array[i] == 0)
+        {
+            break;
+        }
+        kill(passengers_array[i], SIGKILL);
+    }
+
+    printf("kiled children \n");
+
+    delete_semaphore(SEM_ACCESS_GRANTED_SEED);
+    delete_semaphore(SEM_ACCESS_DENIED_SEED);
+    delete_semaphore(SEM_IMPATIENT_SEED);
+    delete_semaphore(SEM_ARRAY_SEED);
+
+    delete_shared_memory(ACCESS_GRANTED_SEED);
+    delete_shared_memory(ACCESS_DENIED_SEED);
+    delete_shared_memory(IMPATIENT_SEED);
+
+    printf("kiled things \n");
 
     return 0;
 }
@@ -251,6 +300,40 @@ void create_semaphore(char seed)
         {
             perror("ERROR in SETVAL");
         }
+    }
+}
+
+void delete_semaphore(char seed)
+{
+    key_t key;
+    key = ftok(".", seed);
+    long sem_id;
+
+    if ((sem_id = semget(key, 1, 0660)) == -1)
+    {
+        perror("ERROR in get SEMAPHORE");
+    }
+
+    if (semctl(sem_id, 0, IPC_RMID, 0) == -1)
+    {
+        perror("ERROR in DELETE SEMAPHORE");
+    }
+}
+
+void delete_shared_memory(char seed)
+{
+    key_t key;
+    key = ftok(".", seed);
+
+    long shm_id;
+
+    if ((shm_id = shmget(key, 10, 0660)) == -1)
+    {
+        perror("ERROR in get SEMAPHORE");
+    }
+    if (shmctl(shm_id, IPC_RMID, (struct shmid_ds *)0) == -1)
+    {
+        perror("ERROR in DELETE SEMAPHORE");
     }
 }
 

@@ -7,6 +7,7 @@ struct QNode *newNode(int id);
 struct Queue *createQueue();
 void signal_alarm_catcher(int);
 void signal_ready_catcher(int);
+void signal_end_catcher(int);
 void empty_bus(int);
 
 long mid;
@@ -24,6 +25,11 @@ int main(int argc, char *argv[])
     {
         perror("Sigset can not set SIGUSR1");
         exit(SIGSTOP);
+    }
+    if (sigset(SIGINT, signal_end_catcher) == SIGINT)
+    {
+        perror("Sigset can not set SIGUSR1");
+        exit(SIGINT);
     }
 
     MESSAGE msg;
@@ -67,8 +73,6 @@ int main(int argc, char *argv[])
         }
         else if (ready_flag == 1)
         {
-
-            //TODO: empty the queue and kill passengers and set the semaphore to bus_capacity
             sleep_time = rand() % 4 + 10;
             sleep(sleep_time);
             while (1)
@@ -86,6 +90,21 @@ int main(int argc, char *argv[])
             empty_bus(bus_num);
             ready_flag == 0;
             printf("BUSS %d is ready to load\n", bus_num);
+        }
+        else if (ready_flag == 2) // end program case
+        {
+            while (1)
+            {
+                passenger_id = deQueue(passengers);
+                // queue is empty
+                if (passenger_id == -1)
+                {
+                    msgctl(mid, IPC_RMID, (struct msqid_ds *) 0);
+                    printf("BUS %d IS CLEAN NOW\n", bus_num);
+                    return 0;
+                }
+                kill(passenger_id, SIGKILL);
+            }
         }
     }
 
@@ -169,8 +188,7 @@ void empty_bus(int bus_num)
 
     if ((sem_array_id = semget(sem_array_key, num_of_busses, 0660)) == -1)
     {
-        perror("semget: IPC_CREAT | 0660");
-        exit(1);
+        return;
     }
 
     printf("Semaphore identifier %d\n", sem_array_id);
@@ -180,52 +198,6 @@ void empty_bus(int bus_num)
     {
         perror("SETVAL error");
     }
-
-    //     // Initailize semaphore cell values
-    //     for (int i = 0; i < num_of_busses; i++)
-    //     { /* display contents */
-    //         if ((sem_value = semctl(sem_array_id, i, GETVAL, 0)) == -1)
-    //         {
-    //             perror("semctl: GETVAL");
-    //             exit(4);
-    //         }
-    //         sem_array[i] = sem_value;
-    //         printf("Semaphore %d has value of %d\n", i, sem_value);
-    //         fflush(stdout);
-    //     }
-    //     sem_array[bus_num] = capacity_of_bus;
-
-    //     /*
-    // * Set arg (the union) to the addr of the storage location
-    // * for returned semid_ds values.
-    // */
-    //     arg.buf = &sem_buf;
-
-    //     /*
-    // * Set arg (the union) to the addr of the initializing
-    // * vector.
-    // */
-
-    //     //Initalize semaphore
-    //     arg.array = sem_array;
-
-    //     if (semctl(sem_array_id, 0, SETALL, arg) == -1)
-    //     {
-    //         perror("semctl: SETALL 1213332");
-    //         exit(3);
-    //     }
-
-    //     for (int i = 0; i < num_of_busses; i++)
-    //     { /* display contents */
-    //         if ((sem_value = semctl(sem_array_id, i, GETVAL, 0)) == -1)
-    //         {
-    //             perror("semctl: GETVAL");
-    //             exit(4);
-    //         }
-
-    //         printf("Semaphore %d has value of %d\n", i, sem_value);
-    //         fflush(stdout);
-    //     }
 }
 
 void signal_alarm_catcher(int the_sig)
@@ -238,4 +210,9 @@ void signal_ready_catcher(int the_sig)
 {
     ready_flag = 1;
     printf("BUSS %d is full and going to unload\n", bus_num);
+}
+
+void signal_end_catcher(int the_sig)
+{
+    ready_flag = 2;
 }

@@ -60,5 +60,28 @@ struct Queue
 	struct QNode *front, *rear;
 };
 
+/*
+* Color Methods
+*/
+
+void cyan()
+{
+    printf("\033[0;36m");
+}
+
+void yellow()
+{
+    printf("\033[1;33m");
+}
+
+void reset()
+{
+    printf("\033[0m");
+}
+
+void green()
+{
+    printf("\033[0;32m");
+}
 
 #endif

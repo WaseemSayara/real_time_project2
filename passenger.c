@@ -120,6 +120,7 @@ MESSAGE create_message()
 
     sprintf(str_pid, "%d", getpid());
 
+    // Return message consist pid-Passport validity either T (True) or F (False)
     strcat(message, str_pid);
     strcat(message, "-");
     strcat(message, valid_passport);

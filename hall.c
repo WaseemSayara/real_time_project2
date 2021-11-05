@@ -11,20 +11,22 @@ int hall_count = 0;
 
 int main(int argc, char *argv[])
 {
-    key_t key;
-    long mid;
+    
+    long mid, shmid_1, shmid_2, shmid_3, bus_sem_array_id;
+    int max_limit, min_limit, num_of_busses;
+    char str_passenger_id[10], tmp[20];
     struct msqid_ds buf;
     MESSAGE recieved_msg, to_bus_msg;
-    int max_limit, min_limit, num_of_busses;
-    long shmid_1, shmid_2, shmid_3, bus_sem_array_id;
+    key_t key;
     FILE *variables;
-    char str_passenger_id[10], tmp[20];
-
+    
+    // Received threshold limits for hall
     max_limit = atoi(argv[0]);
     min_limit = atoi(argv[1]);
 
     printf("the hall id is: %d\n", getpid());
 
+    // Sigalarm catcher
     if (sigset(SIGALRM, signal_alarm_catcher) == SIGALRM)
     {
         perror("Sigset can not set SIGALRM");
@@ -139,6 +141,7 @@ int main(int argc, char *argv[])
 
             enQueue(passengers, passenger_id);
             hall_count++;
+            yellow();
             printf("the current count in the hall is --( %d )--\n", hall_count);
             fflush(stdout);
             increment_shared_memory(shmid_1);
@@ -149,6 +152,7 @@ int main(int argc, char *argv[])
                 perror("semctl: GETVAL");
                 exit(4);
             }
+            
             printf(" current bus: %d,  with sem_value = %d \n\n", current_bus, current_value);
             while (current_value > 0)
             {

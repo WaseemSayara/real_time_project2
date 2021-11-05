@@ -5,15 +5,17 @@ void signal_alarm_catcher(int the_sig);
 
 int main(int argc, char *argv[])
 {
-    key_t key, hall_key;
-    char SEED = *argv[0];
-    long mid, hall_mid;
-    MESSAGE msg;
+
     int passport_stamp, passenger_pid, random_alarm;
-    char recieved_msg[10], valid_passport[2];
+    char SEED = *argv[0], recieved_msg[10], valid_passport[2];
+    long mid, hall_mid;
+    key_t key, hall_key;
+    MESSAGE msg;
 
     srand(getpid());
 
+    // Alarm signal catcher
+    // Alarm used to calculate time in of terminated case for project
     if (sigset(SIGALRM, signal_alarm_catcher) == SIGALRM)
     {
         perror("Sigset can not set SIGINT");
@@ -23,17 +25,21 @@ int main(int argc, char *argv[])
     // Random alarm value (40-55 Seconds)
     random_alarm = (rand() % 15) + 150;
     alarm(random_alarm);
-
     sleep(1);
 
     printf("the officer id is: %d, with seed = %c \n", getpid(), SEED);
     fflush(stdout);
+
+    // Create V key used to create message queue
     if ((key = ftok(".", SEED)) == -1)
     {
         perror("Client: key generation");
         return 1;
     }
 
+    /*
+    * Create message queue
+    */
     if ((mid = msgget(key, 0)) == -1)
     {
         mid = msgget(key, IPC_CREAT | 0660);
@@ -71,15 +77,16 @@ int main(int argc, char *argv[])
 
         // Inform passenger he reached the officer
         // Check if passenger is still alive
-        if (kill(passenger_pid, SIGUSR1) != -1) 
+        if (kill(passenger_pid, SIGUSR1) != -1)
         {
             if (strcmp(valid_passport, "T") == 0)
             {
                 sleep(passport_stamp);
 
                 MESSAGE msg_to_hall;
-                msg_to_hall.mtype = HALL_MESSAGE_TYPE;
                 char str_passenger_pid[12];
+
+                msg_to_hall.mtype = HALL_MESSAGE_TYPE;
                 sprintf(str_passenger_pid, "%d", passenger_pid);
                 strcpy(msg_to_hall.mtext, str_passenger_pid);
 
@@ -103,7 +110,8 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-// SWGALRM Catcher
+
+// SIGALRM Catcher
 void signal_alarm_catcher(int the_sig)
 {
     exit(1);

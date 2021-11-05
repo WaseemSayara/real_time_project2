@@ -38,15 +38,18 @@ int main(int argc, char *argv[])
         exit(SIGTERM);
     }
 
-    // Random alarm value
-    random_alarm = (rand() % 15) + 15; // from 15 to 30 secounds
+    // Random alarm value (15-30 Seconds)
+    random_alarm = (rand() % 15) + 15;
     alarm(random_alarm);
 
-    int tmp = (rand() % 100);
-    if (tmp <= 70)
-        nationality = 0; // arab
+    // Random Nationality with user-defined Percentage
+    int tmp = (rand() % 1);
+    if (tmp <= ARAB_PERCENTS)
+        // Arab
+        nationality = 0;
     else
-        nationality = 1; // forigen
+        // Forigen
+        nationality = 1;
 
     officers = atoi(argv[0]);
     arab_officers = officers * ARAB_PERCENTS;
@@ -98,6 +101,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+// Function to create message with text "PID-(T/F)" and type 1
 MESSAGE create_message()
 {
 
@@ -107,6 +111,7 @@ MESSAGE create_message()
     srand(getpid());
     MESSAGE tmp_msg;
 
+    // Random Valid Passport value with Validity Percentage %90
     int tmp = (rand() % 100);
     if (tmp <= 90)
         strcpy(valid_passport, "T");
@@ -125,6 +130,7 @@ MESSAGE create_message()
     return tmp_msg;
 }
 
+// SIGALRM catcher
 void signal_alarm_catcher(int the_sig)
 {
     printf("passenger with pid = %d, exited from alarm\n", getpid());
@@ -132,11 +138,14 @@ void signal_alarm_catcher(int the_sig)
     exit(1);
 }
 
+// SIGUSR1 catcher
 void signal_usr1_catcher(int the_sig)
 {
-    alarm(0); // cancel current alarms
+    // Cancel Current Alarms
+    alarm(0);
 }
 
+// SIGTERM catcher
 void signal_in_valid_passport_catcher(int the_sig)
 {
     printf("passenger with pid = %d, exited due to inValid passport\n", getpid());

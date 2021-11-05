@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     char SEED = *argv[0];
     long mid, hall_mid;
     MESSAGE msg;
-    int process_passport, passenger_pid, random_alarm;
+    int passport_stamp, passenger_pid, random_alarm;
     char recieved_msg[10], valid_passport[2];
 
     srand(getpid());
@@ -20,14 +20,14 @@ int main(int argc, char *argv[])
         exit(SIGSTOP);
     }
 
-    // Random alarm value
-    random_alarm = (rand() % 15) + 15; // from 15 to 30 secounds
+    // Random alarm value (15-30 Seconds)
+    random_alarm = (rand() % 15) + 15;
     alarm(random_alarm);
 
     sleep(1);
 
     printf("the officer id is: %d, with seed = %c \n", getpid(), SEED);
-     fflush(stdout);
+    fflush(stdout);
     if ((key = ftok(".", SEED)) == -1)
     {
         perror("Client: key generation");
@@ -58,9 +58,10 @@ int main(int argc, char *argv[])
             return 4;
         }
         printf("From officer with seed = %c : %s \n", SEED, msg.mtext);
-         fflush(stdout);
+        fflush(stdout);
 
-        process_passport = (rand() % 3) + 3; // 3-5
+        // Random process length between 3 and 5
+        passport_stamp = (rand() % 3) + 3;
         strcpy(recieved_msg, msg.mtext);
 
         char *token = strtok(recieved_msg, "-");
@@ -68,12 +69,13 @@ int main(int argc, char *argv[])
         token = strtok(NULL, "-");
         strcpy(valid_passport, token);
 
-        // inform passenger he reached the officer
-        if (kill(passenger_pid, SIGUSR1) != -1) // check if passenger is still alive
+        // Inform passenger he reached the officer
+        // Check if passenger is still alive
+        if (kill(passenger_pid, SIGUSR1) != -1) 
         {
             if (strcmp(valid_passport, "T") == 0)
             {
-                sleep(process_passport);
+                sleep(passport_stamp);
 
                 MESSAGE msg_to_hall;
                 msg_to_hall.mtype = HALL_MESSAGE_TYPE;
@@ -92,7 +94,8 @@ int main(int argc, char *argv[])
             }
             else
             {
-                sleep((int)(process_passport / 2));
+                // Invalid Passport -> takes 0.5 * Passport Stamp
+                sleep((int)(passport_stamp / 2));
                 int r = kill(passenger_pid, SIGTERM);
             }
         }
@@ -100,7 +103,7 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
+// SWGALRM Catcher
 void signal_alarm_catcher(int the_sig)
 {
     exit(1);

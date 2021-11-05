@@ -234,6 +234,7 @@ void increment_shared_memory(long shmid)
     shmdt(shmid);
 }
 
+// SIGALRM Catcher
 void signal_alarm_catcher(int the_sig)
 {
     printf("Hall with pid = %d, exited from alarm\n", getpid());

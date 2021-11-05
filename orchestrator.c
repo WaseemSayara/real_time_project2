@@ -245,7 +245,7 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
     int sem_value;
 
     sem_array_key = ftok(".", SEM_ARRAY_SEED);
-    printf(" ------ %d\n", sem_array_key);
+    printf(" ------  Bus Semaphore: %d\n", sem_array_key);
      fflush(stdout);
 
     /*

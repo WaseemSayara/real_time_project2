@@ -26,25 +26,38 @@
 
 #define MSGSZ 12
 #define ARAB_PERCENTS 0.7
-#define HALL_SEED '$'
+#define HALL_SEED '@'
 #define HALL_MESSAGE_TYPE 2
 #define HALL_MESSAGE_SIZE 10
 
 #define BUS_MESSAGE_TYPE 3
 #define BUS_MESSAGE_SIZE 10
 
-
-
-typedef struct msgbuf {
+typedef struct msgbuf
+{
 	long mtype;
 	char mtext[MSGSZ];
 } MESSAGE;
 
 union semun
 {
-int val;
-struct semid_ds *buf;
-ushort *array;
+	int val;
+	struct semid_ds *buf;
+	ushort *array;
+};
+
+// A linked list (LL) node to store a queue entry
+struct QNode
+{
+	int passenger_pid;
+	struct QNode *next;
+};
+
+// The queue, front stores the front node of LL and rear stores the
+// last node of LL
+struct Queue
+{
+	struct QNode *front, *rear;
 };
 
 

@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     create_shared_memory(ACCESS_GRANTED_SEED);
     create_shared_memory(ACCESS_DENIED_SEED);
     create_shared_memory(IMPATIENT_SEED);
-    
+
     // -----------------------------------------------------------------------------
     // -----------------------------------------------------------------------------
 
@@ -63,8 +63,11 @@ int main(int argc, char *argv[])
         // The process is a child
         else if (pid == 0)
         {
+
+            char str_bus_num[3];
+            sprintf(str_bus_num, "%d", i);
             // Assign Referee process
-            if (execl("./bus", (char *)0) == -1)
+            if (execl("./bus",str_bus_num, (char *)0) == -1)
             {
                 perror("Faild to execute ./bus!");
                 exit(3);
@@ -104,6 +107,20 @@ int main(int argc, char *argv[])
     }
     sleep(1);
 
+    int size = num_of_busses * 8;
+    char concatenate_pids[size];
+    char temp[8];
+
+    // Concatenate first pid in the list
+    sprintf(concatenate_pids, "%d", bus_array[0]);
+
+    for (i = 1; i < num_of_busses; i++)
+    {
+        sprintf(temp, "%d", bus_array[i]);
+        strcat(concatenate_pids, "-");
+        strcat(concatenate_pids, temp);
+    }
+
     pid = fork(); //store forked proceee pid in pid variable
     // Failed fork process
     if (pid == -1)
@@ -120,7 +137,7 @@ int main(int argc, char *argv[])
         sprintf(str_max, "%d", hall_max_count);
         sprintf(str_min, "%d", hall_min_count);
 
-        if (execl("./hall", str_max, str_min, (char *)0) == -1)
+        if (execl("./hall", str_max, str_min, concatenate_pids, (char *)0) == -1)
         {
             perror("Faild to execute ./hall!");
             exit(3);
@@ -134,13 +151,13 @@ int main(int argc, char *argv[])
     sleep(1);
     srand(getpid());
 
-//????????????????????????????????????????????????????? WHY K is constant from 0 to 4 & K express what!! ???????????????????????????????????????????????????????????
+    //????????????????????????????????????????????????????? WHY K is constant from 0 to 4 & K express what!! ???????????????????????????????????????????????????????????
     int k = 0;
-    while (k < 4)
+    while (k < 10)
     {
         int sleep_count, passengers_count;
-        sleep_count = (rand() % 5) + 1;
-        passengers_count = (rand() % 6) + 1;
+        sleep_count = (rand() % 3) + 1;
+        passengers_count = (rand() % 6) + 5;
 
         for (i = 0; i < passengers_count; i++)
         {
@@ -171,61 +188,6 @@ int main(int argc, char *argv[])
         k++;
     }
 
-    // for (i = 0; i < 3; i++)
-    // {
-    // pid = fork(); //store forked proceee pid in pid variable
-
-    // // Failed fork process
-    // if (pid == -1)
-    // {
-    // perror("failed to fork childs");
-    // exit(2);
-    // }
-    // // The process is a child
-    // else if (pid == 0)
-    // {
-    // // Assign Referee process
-    // if (i == 0)
-    // {
-    // char pipe_read[5], pipe_write[5];
-
-    // // Convert from integer to String to send in argv
-    // sprintf(pipe_read, "%d", f_des[0]);
-    // sprintf(pipe_write, "%d", f_des[1]);
-
-    // int status = execl("./referee", pipe_read, pipe_write, (char *)0);
-
-    // if (status == -1)
-    // {
-    // perror("Faild to execute ./referee!");
-    // exit(3);
-    // }
-    // }
-
-    // // Assign children processes
-    // else
-    // {
-    // // Used to identified children ( 1 or 2)
-    // char child_num[3];
-    // sprintf(child_num, "%d", i);
-    // int status = execl("./child", child_num, (char *)0);
-
-    // if (status == -1)
-    // {
-    // perror("Faild to execute ./child!");
-    // exit(4);
-    // }
-    // }
-    // }
-
-    // // Parent Case
-    // else
-    // {
-    // // save children pids
-    // pid_array[i] = pid;
-    // }
-    // }
-
     return 0;
 }
 
@@ -246,7 +208,7 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
 
     sem_array_key = ftok(".", SEM_ARRAY_SEED);
     printf(" ------  Bus Semaphore: %d\n", sem_array_key);
-     fflush(stdout);
+    fflush(stdout);
 
     /*
 * Create the semaphore
@@ -258,7 +220,7 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
     }
 
     printf("Semaphore identifier %d\n", sem_array_id);
-     fflush(stdout);
+    fflush(stdout);
 
     // Initailize semaphore cell values
 
@@ -286,7 +248,7 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
     arg.array = sem_array;
     if (semctl(sem_array_id, 0, SETALL, arg) == -1)
     {
-        perror("semctl: SETALL");
+        perror("semctl: SETALL 1212");
         exit(3);
     }
 
@@ -299,16 +261,16 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
         }
 
         printf("Semaphore %d has value of %d\n", i, sem_value);
-         fflush(stdout);
+        fflush(stdout);
     }
 
-    // Remove Semaphore
+    // // Remove Semaphore
 
-    if (semctl(sem_array_id, 0, IPC_RMID, 0) == -1)
-    {
-        perror("semctl: IPC_RMID"); /* remove semaphore */
-        exit(5);
-    }
+    // if (semctl(sem_array_id, 0, IPC_RMID, 0) == -1)
+    // {
+    //     perror("semctl: IPC_RMID"); /* remove semaphore */
+    //     exit(5);
+    // }
 }
 
 /*

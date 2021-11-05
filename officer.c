@@ -20,8 +20,8 @@ int main(int argc, char *argv[])
         exit(SIGSTOP);
     }
 
-    // Random alarm value (15-30 Seconds)
-    random_alarm = (rand() % 15) + 15;
+    // Random alarm value (40-55 Seconds)
+    random_alarm = (rand() % 15) + 150;
     alarm(random_alarm);
 
     sleep(1);

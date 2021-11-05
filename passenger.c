@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     }
 
     // Random alarm value (15-30 Seconds)
-    random_alarm = (rand() % 15) + 15;
+    random_alarm = (rand() % 15) + 100;
     alarm(random_alarm);
 
     // Random Nationality with user-defined Percentage

@@ -107,8 +107,10 @@ int main(int argc, char *argv[])
                             perror("Client9996: msgsend");
                         }
 
+                        cyan();
                         printf("send passenger (%d) to hall\n", passenger_pid);
                         fflush(stdout);
+                        reset();
                     }
                     else
                     {
@@ -156,7 +158,7 @@ void cleanup()
         {
             int x;
             x = msgctl(mid, IPC_RMID, (struct msqid_ds *)0);
-            exit (0);
+            exit(0);
         }
         else
         {

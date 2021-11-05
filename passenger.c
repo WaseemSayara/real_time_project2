@@ -49,8 +49,8 @@ int main(int argc, char *argv[])
     alarm(random_alarm);
 
     // Random Nationality with user-defined Percentage
-    int tmp = (rand() % 1);
-    if (tmp <= ARAB_PERCENTS)
+    int tmp = (rand() % 100);
+    if (tmp <= 100 * ARAB_PERCENTS)
         // Arab
         nationality = 0;
     else
@@ -132,15 +132,19 @@ MESSAGE create_message(int nat)
     {
         strcpy(valid_passport, "T");
         strcpy(passport, "Valid");
+        green();
         printf("Passenger with pid = %d, is %s, and his passport is %s\n", getpid(), nataonality, passport);
         fflush(stdout);
+        reset();
     }
     else
     {
         strcpy(valid_passport, "F");
         strcpy(passport, "InValid");
+        green();
         printf("Passenger with pid = %d, is %s, and his passport is %s\n", getpid(), nataonality, passport);
         fflush(stdout);
+        reset();
     }
 
     sprintf(str_pid, "%d", getpid());
@@ -159,8 +163,10 @@ MESSAGE create_message(int nat)
 // SIGALRM catcher
 void signal_alarm_catcher(int the_sig)
 {
+    red();
     printf("passenger with pid = %d, got impatient and exited\n", getpid());
     fflush(stdout);
+    reset();
     impatient();
     exit(1);
 }
@@ -175,8 +181,10 @@ void signal_usr1_catcher(int the_sig)
 // SIGTERM catcher
 void signal_in_valid_passport_catcher(int the_sig)
 {
+    red();
     printf("passenger with pid = %d, exited due to inValid passport\n", getpid());
     fflush(stdout);
+    reset();
     exit(2);
 }
 

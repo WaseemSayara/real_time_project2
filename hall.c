@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
                         perror("Client1212: msgsend");
                         break;
                     }
-                    printf("passenger %d got in bus %d\n",passenger_id, current_bus);
+                    printf("passenger %d got in bus %d\n", passenger_id, current_bus);
 
                     hall_count--;
                     current_value--;
@@ -174,7 +174,10 @@ int main(int argc, char *argv[])
 
                         if (current_value2 == 0)
                         {
+                            cyan();
                             printf("send signal to bus %d to move \n", current_bus);
+                            fflush(stdout);
+                            reset();
                             kill(bus_pid_array[current_bus], SIGUSR1);
                         }
 

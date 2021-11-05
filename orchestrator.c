@@ -270,6 +270,7 @@ int main(int argc, char *argv[])
 
     printf("WAIT FEW SECONDS TO CLEAN\n");
 
+    sleep(2);
     return 0;
 }
 
@@ -388,7 +389,6 @@ void bus_semaphore(int num_of_busses, int capacity_of_bus)
             exit(4);
         }
     }
-
 }
 
 /*
@@ -443,21 +443,27 @@ void create_shared_memory(char proj_id)
 
 void signal_usr1_catcher(int the_sig)
 {
-    printf("\n Program ended due to enough passengers were GRANTED to access the porders \n");
+    red();
+    printf("\nProgram ended due to enough passengers were GRANTED to access the porders \n");
     fflush(stdout);
+    reset();
     end_flag = 1;
 }
 
 void signal_usr2_catcher(int the_sig)
 {
-    printf("\n Program ended due to enough passengers were DENIED to access the porders \n");
+    red();
+    printf("\nProgram ended due to enough passengers were DENIED to access the porders \n");
     fflush(stdout);
+    reset();
     end_flag = 1;
 }
 
 void signal_int_catcher(int the_sig)
 {
-    printf("\n Program ended due to enough passengers were IMPATIENT and left \n");
+    red();
+    printf("\nProgram ended due to enough passengers were IMPATIENT and left \n");
     fflush(stdout);
+    reset();
     end_flag = 1;
 }

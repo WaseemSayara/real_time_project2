@@ -41,6 +41,7 @@ int main(int argc, char *argv[])
     srand(bus_id);
 
     bus_num = atoi(argv[0]);
+
     printf("the bus id is: %d, and number is %d \n", getpid(), bus_num);
 
     FILE *variables = fopen("variables.txt", "r");
